@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Middlewares\Third_Party\FreeRTOS\Source\croutine.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Middlewares\Third_Party\FreeRTOS\Source\event_groups.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Middlewares\Third_Party\FreeRTOS\Source\list.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Middlewares\Third_Party\FreeRTOS\Source\queue.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Middlewares\Third_Party\FreeRTOS\Source\stream_buffer.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Middlewares\Third_Party\FreeRTOS\Source\tasks.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Middlewares\Third_Party\FreeRTOS\Source\timers.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Middlewares\Third_Party\FreeRTOS\Source\portable\MemMang\heap_4.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F\port.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{B2F2BFDA-6967-35D4-8320-F6FABF4E5A38}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

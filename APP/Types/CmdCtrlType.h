@@ -1,0 +1,8 @@
+//
+// Created by blin on 2026/3/7.
+//
+
+#ifndef CONTROLSYSTEM_CMDCTRLTYPE_H
+#define CONTROLSYSTEM_CMDCTRLTYPE_H
+
+#endif //CONTROLSYSTEM_CMDCTRLTYPE_H

@@ -1,0 +1,346 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{AF064EA6-18BF-3660-AAC4-AE29D1312C53}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>STM32_Drivers</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">STM32_Drivers.dir\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">STM32_Drivers.dir\Debug\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">STM32_Drivers</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">STM32_Drivers.dir\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">STM32_Drivers.dir\Release\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">STM32_Drivers</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">STM32_Drivers.dir\MinSizeRel\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">STM32_Drivers.dir\MinSizeRel\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">STM32_Drivers</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">STM32_Drivers.dir\RelWithDebInfo\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">STM32_Drivers.dir\RelWithDebInfo\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">STM32_Drivers</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">.lib</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Core\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc\Legacy;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Device\ST\STM32H7xx\Include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <BufferSecurityCheck></BufferSecurityCheck>
+      <CallingConvention></CallingConvention>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <FloatingPointModel></FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <LanguageStandard_C>stdc11</LanguageStandard_C>
+      <MinimalRebuild></MinimalRebuild>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;USE_PWR_LDO_SUPPLY;USE_HAL_DRIVER;STM32H743xx;DEBUG;CMAKE_INTDIR="Debug"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\STM32_Drivers.dir\Debug\</ProgramDataBaseFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;USE_PWR_LDO_SUPPLY;USE_HAL_DRIVER;STM32H743xx;DEBUG;CMAKE_INTDIR=\"Debug\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Core\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc\Legacy;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Device\ST\STM32H7xx\Include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Core\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc\Legacy;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Device\ST\STM32H7xx\Include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Core\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc\Legacy;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Device\ST\STM32H7xx\Include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <BufferSecurityCheck></BufferSecurityCheck>
+      <CallingConvention></CallingConvention>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <FloatingPointModel></FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <LanguageStandard_C>stdc11</LanguageStandard_C>
+      <MinimalRebuild></MinimalRebuild>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;USE_PWR_LDO_SUPPLY;USE_HAL_DRIVER;STM32H743xx;CMAKE_INTDIR="Release"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+      <ProgramDataBaseFileName>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\STM32_Drivers.dir\Release\</ProgramDataBaseFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;USE_PWR_LDO_SUPPLY;USE_HAL_DRIVER;STM32H743xx;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Core\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc\Legacy;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Device\ST\STM32H7xx\Include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Core\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc\Legacy;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Device\ST\STM32H7xx\Include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Core\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc\Legacy;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Device\ST\STM32H7xx\Include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <BufferSecurityCheck></BufferSecurityCheck>
+      <CallingConvention></CallingConvention>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <FloatingPointModel></FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <LanguageStandard_C>stdc11</LanguageStandard_C>
+      <MinimalRebuild></MinimalRebuild>
+      <Optimization>MinSpace</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;USE_PWR_LDO_SUPPLY;USE_HAL_DRIVER;STM32H743xx;CMAKE_INTDIR="MinSizeRel"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+      <ProgramDataBaseFileName>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\STM32_Drivers.dir\MinSizeRel\</ProgramDataBaseFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;USE_PWR_LDO_SUPPLY;USE_HAL_DRIVER;STM32H743xx;CMAKE_INTDIR=\"MinSizeRel\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Core\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc\Legacy;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Device\ST\STM32H7xx\Include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Core\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc\Legacy;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Device\ST\STM32H7xx\Include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Core\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc\Legacy;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Device\ST\STM32H7xx\Include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <BufferSecurityCheck></BufferSecurityCheck>
+      <CallingConvention></CallingConvention>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <FloatingPointModel></FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <LanguageStandard_C>stdc11</LanguageStandard_C>
+      <MinimalRebuild></MinimalRebuild>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;USE_PWR_LDO_SUPPLY;USE_HAL_DRIVER;STM32H743xx;CMAKE_INTDIR="RelWithDebInfo"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\STM32_Drivers.dir\RelWithDebInfo\</ProgramDataBaseFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;USE_PWR_LDO_SUPPLY;USE_HAL_DRIVER;STM32H743xx;CMAKE_INTDIR=\"RelWithDebInfo\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Core\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc\Legacy;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Device\ST\STM32H7xx\Include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Core\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\STM32H7xx_HAL_Driver\Inc\Legacy;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Device\ST\STM32H7xx\Include;D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\..\..\Drivers\CMSIS\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\CMakeLists.txt">
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule D:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7/cmake/stm32cubemx/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7 -BD:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7 --check-stamp-file D:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7/cmake/stm32cubemx/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule D:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7/cmake/stm32cubemx/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7 -BD:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7 --check-stamp-file D:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7/cmake/stm32cubemx/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule D:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7/cmake/stm32cubemx/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7 -BD:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7 --check-stamp-file D:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7/cmake/stm32cubemx/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule D:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7/cmake/stm32cubemx/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7 -BD:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7 --check-stamp-file D:/2_work/1_2_management/1_2_2_test/ControlSystem_STM32H7/cmake/stm32cubemx/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\cmake\stm32cubemx\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Core\Src\system_stm32h7xx.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_tim.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_tim_ex.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_cortex.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_fdcan.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_rcc.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_rcc_ex.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_flash.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_flash_ex.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_gpio.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_hsem.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_dma.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_dma_ex.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_mdma.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_pwr.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_pwr_ex.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_i2c.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_i2c_ex.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_exti.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_uart.c" />
+    <ClCompile Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_uart_ex.c" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="D:\2_work\1_2_management\1_2_2_test\ControlSystem_STM32H7\ZERO_CHECK.vcxproj">
+      <Project>{B0F6163B-9393-3BD3-8919-77BF0C63F980}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
