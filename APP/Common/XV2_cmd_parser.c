@@ -83,6 +83,7 @@ X_V2_result_t X_V2_parse_can(GlobalMotor *m, uint32_t can_ext_id,
     		m->current_pos = dir == 0 ? (float) raw / 10.0f : -(float) raw / 10.0f;
     		m->stepper_motor.current_pos = m->current_pos * m->stepper_motor.daocheng / 360.0f;
     	}
+        break;
     case X_V2_FC_READ_TARGET_POS:           // 0x33
     case X_V2_FC_READ_REALTIME_TPOS:        // 0x34
         if (data_len >= 5) {

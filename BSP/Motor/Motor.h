@@ -14,8 +14,8 @@
 ***	qq：1071378062
 **********************************************************/
 
-#define MOTOR_NUM 10 // 定义电机数量
-#define MOTOR_ID 1 // 定义电机起始 ID
+#define MOTOR_NUM 6 // 定义电机数量
+#define MOTOR_ID 7 // 定义电机起始 ID
 
 // ==================== Emm_V5 步进闭环：反馈指令帧结构体 ====================
 // 帧格式以 `0x6B` 结尾（文档称“校验字节”，发送端固定为 0x6B）
@@ -131,6 +131,7 @@ void motor_kinematic_control(Kinematic kinematic, float R[], float theta[], floa
 
 // 新增函数 - 添加于2026-03-27 by Psyduck
 void motor_status_check(void);
+void motor_pressure_control(void);
 
 float motor_angle_to_displacement(uint8_t motor_index, float angle);
 float motor_displacement_to_angle(uint8_t motor_index, float displacement);

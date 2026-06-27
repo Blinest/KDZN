@@ -54,9 +54,9 @@ uint16_t cmd_packer_pack_status_frame(uint8_t* frame, GlobalMotor motor[MOTOR_NU
     }
     // 传感器数据
     for (int i = 0; i < SENSOR_NUM; i++) {
-        int16_t x = (int16_t)(sensor[i].x * 100);
-        int16_t y = (int16_t)(sensor[i].y * 100);
-        int16_t z = (int16_t)(sensor[i].z * 100);
+        int16_t x = (int16_t)(sensor[i].press_sensor.raw_val /10);
+        int16_t y = (int16_t)(sensor[i].press_sensor.raw_val * 10);
+        int16_t z = (int16_t)(sensor[i].press_sensor.raw_val);
         frame[idx++] = (x >> 8) & 0xFF; frame[idx++] = x & 0xFF;
         frame[idx++] = (y >> 8) & 0xFF; frame[idx++] = y & 0xFF;
         frame[idx++] = (z >> 8) & 0xFF; frame[idx++] = z & 0xFF;

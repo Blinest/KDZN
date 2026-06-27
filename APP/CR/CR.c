@@ -78,7 +78,7 @@ uint8_t armBend(int seg, char direction, double val)
 static void _get_forces(float forces[SENSOR_NUM])
 {
     for (int i = 0; i < SENSOR_NUM; i++) {
-        forces[i] = global_sensor[i].x;
+        forces[i] = global_sensor[i].press_sensor.val;
     }
 }
 
@@ -87,6 +87,16 @@ static void _sdm_run(void)
 {
     float forces[SENSOR_NUM];
     _get_forces(forces);
+
+    /* 力安全前置检查：任意一路超限则跳过本次运动 */
+    float force_limit = sdm_get_force_peak_limit();
+    for (int i = 0; i < SENSOR_NUM; i++) {
+        if (forces[i] >= force_limit) {
+            for (int j = 0; j < SDM_WIRES; j++)
+                CR.joint_space.deltaL[j] = 0.0f;
+            return;
+        }
+    }
 
     /* 从电机编码器读取实际位移反馈 */
     float deltaL_actual[SDM_WIRES];

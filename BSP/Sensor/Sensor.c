@@ -32,9 +32,9 @@ void sensor_init(void)
 {
     // 1. 清空传感器数据结构
     for (int i = 0; i < SENSOR_NUM; i++) {
-        global_sensor[i].x = 0.0f;
-        global_sensor[i].y = 0.0f;
-        global_sensor[i].z = 0.0f;
+        global_sensor[i].press_sensor.raw_val = 10.0f;
+        global_sensor[i].press_sensor.filter_val = 0.0f;
+        global_sensor[i].press_sensor.val = 0.0f;
     }
 
     // 2. 初始化 CMCU-06 传感器硬件
@@ -61,7 +61,7 @@ void sensor_multi_read(void)
 {
     for (int i = 0; i < SENSOR_NUM; i++) {
         CMCU_06_single_read(i + 1);
-        osDelay(2);
+        osDelay(15);  // 发送8ms + 响应9ms，15ms 留 ~4ms 余量
     }
 }
 

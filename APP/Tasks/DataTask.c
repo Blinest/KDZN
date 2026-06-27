@@ -26,8 +26,8 @@
 #include "Sensor/WT_IMU.h"
 #include "Sensor/CMCU-06.h"
 
-extern osMessageQueueId_t MotorDataParseQueueHandle;
 extern osMessageQueueId_t PressDataParseQueueHandle;
+extern osMessageQueueId_t MotorDataParseQueueHandle;
 
 #define RX_BUF_SIZE 256
 
@@ -58,8 +58,8 @@ void StartDataTask(void *argument)
             last_motor_check_time = current_time;
         }
 
-        // 每500ms读取一次传感器数据
-        if ((current_time - last_sensor_read_time) >= 500)
+        // 每100ms读取一次传感器数据
+        if ((current_time - last_sensor_read_time) >= 100)
         {
             // 读取6个压力传感器（地址1-6）
             sensor_multi_read();
@@ -76,13 +76,18 @@ void StartDataTask(void *argument)
         // 1) CMCU-06 压力传感器响应（Modbus-RTU协议）
         // 2) WT_IMU 数据帧
         // 分别送入对应的解析器
-        while (osMessageQueueGet(MotorDataParseQueueHandle, &rx_byte, NULL, 0) == osOK)
+        while (osMessageQueueGet(PressDataParseQueueHandle, &rx_byte, NULL, 0) == osOK)
         {
             // CMCU-06 Modbus-RTU 响应解析
             CMCU_06_Parse_Byte(rx_byte);
             // Wit-IMU 数据帧解析
             WitSerialDataIn(rx_byte);
         }
+
+        // ====================================
+        // 2.5 压力闭环控制
+        // ====================================
+        motor_pressure_control();
 
         // IMU角度数据单独读取，不影响6个压力传感器的原始数据
         // （压力传感器数据在 CMCU_06_Parse_Byte 中直接更新 global_sensor[0..5].x）
@@ -92,7 +97,7 @@ void StartDataTask(void *argument)
         // ====================================
 
         // 每200ms发送一次数据到队列 SensorMessageQueue
-        if ((current_time - last_send_time) >= 200)
+        if ((current_time - last_send_time) >= 100)
         {
             // 打包系统状态数据 (使用 static 以节省堆栈空间)
             static uint8_t packed_frame[256];
@@ -104,7 +109,7 @@ void StartDataTask(void *argument)
             // 发送到队列
             for (int i = 0; i < frame_len; i++)
             {
-                osMessageQueuePut(PressDataParseQueueHandle, &packed_frame[i], 0, 0);
+                osMessageQueuePut(MotorDataParseQueueHandle, &packed_frame[i], 0, 0);
             }
             last_send_time = current_time;
         }
@@ -115,7 +120,7 @@ void StartDataTask(void *argument)
 
         // 提取并发送
         tx_buffer_len = 0;
-        while (osMessageQueueGet(PressDataParseQueueHandle, &tx_byte, NULL, 0) == osOK && tx_buffer_len < 256)
+        while (osMessageQueueGet(MotorDataParseQueueHandle, &tx_byte, NULL, 0) == osOK && tx_buffer_len < 256)
         {
             tx_buffer[tx_buffer_len++] = tx_byte;
         }
@@ -123,7 +128,7 @@ void StartDataTask(void *argument)
             Usart_SendString(&huart2, tx_buffer, tx_buffer_len);
         }
 
-        osDelay(10); // 降低 CPU 占用
+        osDelay(1); // 最小延时，让出 CPU 给其他任务
     }
 }
 

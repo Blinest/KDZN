@@ -14,6 +14,10 @@ void CAN_Driver_Init(void)
 {
     // 创建CAN接收队列
     CAN_RxQueueHandle = osMessageQueueNew(32, sizeof(CAN_Message_t), NULL);
+    if (CAN_RxQueueHandle == NULL) {
+        // 队列创建失败，不要启动CAN（RTOS内核未初始化时会失败）
+        return;
+    }
 
     // 启动CAN
     HAL_FDCAN_Start(&hfdcan1);

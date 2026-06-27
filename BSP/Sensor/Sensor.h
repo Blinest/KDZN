@@ -12,18 +12,71 @@
 #define CONTROLSYSTEM_SENSOR_H
 
 #include <stdint.h>
-
+#include "stdbool.h"
+#include "Sensor/SensorParser.h"
 #define SENSOR_NUM 6
 
 /**
  * @brief 全局传感器数据结构
  */
-typedef struct
-{
-	float x;  /**< X轴数据 */
-	float y;  /**< Y轴数据 */
-	float z;  /**< Z轴数据 */
+/**
+ * @brief IMU 数据结构（纯数据）
+ */
+typedef struct {
+ float pitch;   /**< X轴角度 */
+ float roll;    /**< Y轴角度 */
+ float yaw;     /**< Z轴角度 */
+ uint8_t id;    /**< 传感器ID */
+} IMU;
+
+/**
+ * @brief 压力传感器数据结构（纯数据）
+ */
+typedef struct {
+ float val;        /**< 转换后的压力值（单位：根据实际定义） */
+ int32_t raw_val;  /**< 原始32位有符号值 */
+ float filter_val;
+ uint8_t id;       /**< 传感器ID */
+} PressSensor;
+
+/**
+ * @brief 全局传感器数据结构（纯数据聚合）
+ */
+typedef struct {
+ IMU imu;
+ PressSensor press_sensor;
 } GlobalSensor;
+
+typedef enum {
+ SENSOR_PARSER_MODE_NONE = 0,
+ SENSOR_PARSER_MODE_IMU,
+ SENSOR_PARSER_MODE_CMCU
+} SensorParserMode;
+
+/**
+ * @brief 传感器解析上下文（参考 MotorContext 设计）
+ * 将传感器数据与对应的协议解析器封装在一起
+ */
+typedef struct {
+ GlobalSensor global_sensor;   /**< 传感器物理数据 */
+ // 结构体：IMU 和压力传感器使用不同的解析器
+ // SensorParser   imu_parser;   /**< IMU 协议解析器 */
+ // CMCU_Parser    press_parser; /**< 压力传感器协议解析器 */
+
+ //使用联合体（如果同一时刻只有一种传感器工作，可节省内存）
+ union {
+  IMUParser   imu_parser;
+  CMCU_Parser    press_parser;
+ } parser;
+
+ SensorParserMode parser_mode;
+
+ // 可选：超时、状态标志等
+ uint8_t last_response_time;
+ uint8_t timeout_threshold;
+ bool  is_online;
+} SensorContext;
+
 
 /**
  * @brief 传感器初始化函数

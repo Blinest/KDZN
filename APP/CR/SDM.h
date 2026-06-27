@@ -85,6 +85,11 @@ void sdm_step(const float forces[SENSOR_NUM],
               float R,
               float deltaL_out[SDM_WIRES]);
 
+/**
+ * @brief 获取力峰值上限 (N)
+ */
+float sdm_get_force_peak_limit(void);
+
 #ifdef __cplusplus
 }
 #endif

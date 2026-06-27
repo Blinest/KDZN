@@ -354,6 +354,8 @@ void sdm_init(const float cable_radius[SDM_SEGMENTS],
     s_initialized = true;
 }
 
+float sdm_get_force_peak_limit(void) { return s_params.force_peak_limit; }
+
 void sdm_step(const float forces[SENSOR_NUM],
               const float theta_desired[SDM_SEGMENTS],
               const float phi_desired[SDM_SEGMENTS],
@@ -371,6 +373,12 @@ void sdm_step(const float forces[SENSOR_NUM],
     float safety;
     bool  over_peak;
     _force_safety(forces, &safety, &over_peak);
+
+    /* 力超限：硬停止，输出全部为 0 */
+    if (over_peak) {
+        for (int i = 0; i < SDM_WIRES; i++) deltaL_out[i] = 0.0f;
+        return;
+    }
 
     float theta_safe[SDM_SEGMENTS], phi_safe[SDM_SEGMENTS];
     for (int s = 0; s < SDM_SEGMENTS; s++) {

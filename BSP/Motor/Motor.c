@@ -34,7 +34,7 @@ void motor_init()
 	for (int i = 0; i < MOTOR_NUM; i++)
 	{
 		global_motor[i].id = MOTOR_ID + i;
-		global_motor[i].stepper_motor.daocheng = 12; // 根据丝杠导程设置，9mm
+		global_motor[i].stepper_motor.daocheng = 1; // 根据丝杠导程设置，1mm
 		global_motor[i].stepper_motor.xifen = 256; // 平滑控制
 		global_motor[i].stepper_motor.step_angle = 1.8; // 步距角
 		global_motor[i].stepper_motor.target_vel = 10; // 如果要完成指标，至少是 10mm/s
@@ -349,5 +349,45 @@ void motor_status_check(void)
     	osDelay(1); // 延时等待响应
     	X_V2_Read_Sys_Params(global_motor[i].id, S_VEL);
     	osDelay(1); // 延时等待响应
+    }
+}
+
+/**
+ * @brief 基于压力传感器反馈的电机独立控制
+ *
+ * - val > PRESS_HIGH: 电机前进（释放压力）
+ * - val < PRESS_LOW:  电机后退（增加张力）
+ * - 目标: 将压力稳定在 ~100
+ */
+#define PRESS_HIGH  200.0f
+#define PRESS_LOW     0.0f
+#define PRESS_STEP    0.1f   // 每次调整步长 (mm)
+#define PRESS_VEL     5.0f   // 调整速度 (mm/s)
+
+void motor_pressure_control(void)
+{
+    static float target[MOTOR_NUM];
+    static bool inited = false;
+
+    if (!inited) {
+        for (int i = 0; i < MOTOR_NUM; i++)
+            target[i] = global_motor[i].stepper_motor.current_pos;
+        inited = true;
+    }
+
+    for (int i = 0; i < MOTOR_NUM; i++) {
+        float val = global_sensor[i].press_sensor.val;
+
+        if (val > PRESS_HIGH) {
+            // 压力过高 → 前进释放
+            target[i] += PRESS_STEP;
+        } else if (val < PRESS_LOW) {
+            // 压力过低 → 后退收紧
+            target[i] -= PRESS_STEP;
+        } else {
+            continue;  // 正常范围，不调整
+        }
+
+        motor_run(i, PRESS_VEL, target[i], 0);
     }
 }
