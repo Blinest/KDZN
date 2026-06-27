@@ -151,9 +151,13 @@ static void pc_cmd_parse_and_execute(void)
                     break;
                 case FUNC_MOTOR_CUSTOM:
                     // 自定义多电机控制: 数量 + [地址, 方向, 距离]...
+                    // 特殊指令: AA 06 02 [校验] → 压力闭环控制
                     if (data_len >= 1) {
-                        uint8_t count = s_ctrlBuf[3]; // 电机数量
-                        if (data_len >= (1 + count * 3)) {
+                        uint8_t count = s_ctrlBuf[3]; // 电机数量 / 子命令
+                        if (count == 0x02 && data_len == 2) {
+                            // 压力闭环控制指令
+                            motor_pressure_control();
+                        } else if (data_len >= (1 + count * 3)) {
                             // 检查是否是特殊指令
                             if (count == 1) {
                                 uint8_t addr = s_ctrlBuf[4];
