@@ -61,7 +61,7 @@ void sensor_multi_read(void)
 {
     for (int i = 0; i < SENSOR_NUM; i++) {
         CMCU_06_single_read(i + 1);
-        osDelay(15);  // 发送8ms + 响应9ms，15ms 留 ~4ms 余量
+        osDelay(20);  // 发送8ms + 响应9ms，15ms 留 ~4ms 余量
     }
 }
 

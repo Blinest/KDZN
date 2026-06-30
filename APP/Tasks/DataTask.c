@@ -108,7 +108,12 @@ void StartDataTask(void *argument)
             // 发送到队列
             for (int i = 0; i < frame_len; i++)
             {
-                osMessageQueuePut(MotorDataParseQueueHandle, &packed_frame[i], 0, 0);
+                if (osMessageQueuePut(MotorDataParseQueueHandle, &packed_frame[i], 0, 10) != osOK)
+                {
+                    // 队列满，等待10ms后重试
+                    osDelay(10);
+                    osMessageQueuePut(MotorDataParseQueueHandle, &packed_frame[i], 0, 10);
+                }
             }
             last_send_time = current_time;
         }

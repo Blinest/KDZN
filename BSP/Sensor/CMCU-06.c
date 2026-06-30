@@ -279,11 +279,13 @@ void CMCU_06_Parse_Byte(uint8_t byte)
 
             if (calc_crc == recv_crc)
             {
-                /* CRC验证通过，提取力值数据（大端序4字节） */
-                int32_t raw = ((int32_t)s_cmcu_parse.buf[3] << 24)
-                            | ((int32_t)s_cmcu_parse.buf[4] << 16)
-                            | ((int32_t)s_cmcu_parse.buf[5] << 8)
-                            | (int32_t)s_cmcu_parse.buf[6];
+                /* CRC验证通过，提取力值数据（低字优先 + 字内大端） */
+                /* buf[3-4] = 低16位（字内大端：buf[3]=高字节, buf[4]=低字节） */
+                /* buf[5-6] = 高16位（字内大端：buf[5]=高字节, buf[6]=低字节） */
+                int32_t raw = ((int32_t)s_cmcu_parse.buf[5] << 24)
+                            | ((int32_t)s_cmcu_parse.buf[6] << 16)
+                            | ((int32_t)s_cmcu_parse.buf[3] << 8)
+                            | (int32_t)s_cmcu_parse.buf[4];
 
 
                  /* 具体转换系数根据实际传感器标定调整 */
@@ -292,8 +294,8 @@ void CMCU_06_Parse_Byte(uint8_t byte)
                 uint8_t sensor_idx = s_cmcu_parse.slave_addr - 1;
                 if (sensor_idx < SENSOR_NUM)
                 {
-                    global_sensor[sensor_idx].press_sensor.raw_val = (int32_t)(force * 100);
-                    global_sensor[sensor_idx].press_sensor.val = force;
+                    global_sensor[sensor_idx].press_sensor.raw_val = raw * 100;
+                    global_sensor[sensor_idx].press_sensor.val = (int32_t)force;
 
                 }
             }

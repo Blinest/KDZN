@@ -122,7 +122,7 @@ void MX_FREERTOS_Init(void) {
   PressDataParseQueueHandle = osMessageQueueNew (256, sizeof(uint8_t), &PressDataParseQueue_attributes);
 
   /* creation of MotorDataParseQueue */
-  MotorDataParseQueueHandle = osMessageQueueNew (256, sizeof(uint8_t), &MotorDataParseQueue_attributes);
+  MotorDataParseQueueHandle = osMessageQueueNew (512, sizeof(uint8_t), &MotorDataParseQueue_attributes);
 
   /* creation of CmdCtrlQueue */
   CmdCtrlQueueHandle = osMessageQueueNew (256, sizeof(uint8_t), &CmdCtrlQueue_attributes);

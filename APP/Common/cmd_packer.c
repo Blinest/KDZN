@@ -54,12 +54,15 @@ uint16_t cmd_packer_pack_status_frame(uint8_t* frame, GlobalMotor motor[MOTOR_NU
     }
     // 传感器数据
     for (int i = 0; i < SENSOR_NUM; i++) {
-        int16_t x = (int16_t)(sensor[i].press_sensor.raw_val /10);
-        int16_t y = (int16_t)(sensor[i].press_sensor.raw_val * 10);
-        int16_t z = (int16_t)(sensor[i].press_sensor.raw_val);
-        frame[idx++] = (x >> 8) & 0xFF; frame[idx++] = x & 0xFF;
-        frame[idx++] = (y >> 8) & 0xFF; frame[idx++] = y & 0xFF;
-        frame[idx++] = (z >> 8) & 0xFF; frame[idx++] = z & 0xFF;
+        int32_t raw = sensor[i].press_sensor.raw_val;
+        int32_t val = sensor[i].press_sensor.val;
+        int32_t filter = sensor[i].press_sensor.filter_val;
+        frame[idx++] = (raw >> 24) & 0xFF; frame[idx++] = (raw >> 16) & 0xFF;
+        frame[idx++] = (raw >> 8) & 0xFF; frame[idx++] = raw & 0xFF;
+        frame[idx++] = (val >> 24) & 0xFF; frame[idx++] = (val >> 16) & 0xFF;
+        frame[idx++] = (val >> 8) & 0xFF; frame[idx++] = val & 0xFF;
+        frame[idx++] = (filter >> 24) & 0xFF; frame[idx++] = (filter >> 16) & 0xFF;
+        frame[idx++] = (filter >> 8) & 0xFF; frame[idx++] = filter & 0xFF;
     }
     // scale
     int16_t s_val = (int16_t)(lqts->operation_space.scale * 100);
