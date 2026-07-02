@@ -16,6 +16,8 @@
 #include "CMCU-06.h"
 #include "IMU.h"
 #include "cmsis_os2.h"
+#include "Storage/FlashStorage.h"
+#include "Motor/Motor.h"
 
 // 初始化全局传感器数组
 GlobalSensor global_sensor[SENSOR_NUM];
@@ -27,6 +29,7 @@ GlobalSensor global_sensor[SENSOR_NUM];
  * 初始化所有传感器，包括：
  * 1. 清空传感器数据结构体
  * 2. 初始化 CMCU-06 压力传感器
+ * 3. 从 Flash 恢复断电前的运行参数
  */
 void sensor_init(void)
 {
@@ -39,7 +42,11 @@ void sensor_init(void)
 
     // 2. 初始化 CMCU-06 传感器硬件
     CMCU_06_Init();
+
+    // 3. 从 Flash 恢复断电前的参数（滤波器状态 + 电机控制状态）
+    param_load();
 }
+
 /**
  * @brief 单传感器数据读取函数
  * @param sensor_id 传感器ID (1-6)
@@ -76,4 +83,45 @@ void sensor_cal(uint8_t sensor_id, uint16_t weight_10x)
         return;
     }
     CMCU_06_Cal(sensor_id, weight_10x);
+}
+
+/**
+ * @brief 保存当前运行参数到内部 Flash
+ *
+ * 收集滤波器状态 + 电机控制状态，写入 Bank2 Sector7。
+ * 阻塞操作（擦除+写入约数十毫秒），在 RTOS 任务中调用时需注意。
+ */
+void param_save(void)
+{
+    FlashStoreData data;
+    memset(&data, 0, sizeof(data));
+
+    data.magic = FLASH_STORE_MAGIC;
+
+    /* 导出 EMA 滤波器状态 */
+    CMCU_06_Filter_Export(data.filter_first_sample, data.filter_val);
+
+    /* 导出电机压力控制状态 */
+    motor_pressure_export(data.motor_target, data.prev_val);
+
+    FlashStorage_Save(&data);
+}
+
+/**
+ * @brief 从内部 Flash 恢复运行参数
+ *
+ * 启动时调用。若 Flash 中无有效数据（首次上电），跳过恢复。
+ */
+void param_load(void)
+{
+    FlashStoreData data;
+
+    if (FlashStorage_Load(&data) == HAL_OK) {
+        /* 恢复 EMA 滤波器状态 */
+        CMCU_06_Filter_Restore(data.filter_first_sample, data.filter_val);
+
+        /* 恢复电机压力控制状态 */
+        motor_pressure_restore(data.motor_target, data.prev_val);
+    }
+    /* 若加载失败（magic 不匹配），不做任何处理，使用默认初始化值 */
 }

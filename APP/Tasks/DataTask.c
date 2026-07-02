@@ -29,7 +29,7 @@
 extern osMessageQueueId_t PressDataParseQueueHandle;
 extern osMessageQueueId_t MotorDataParseQueueHandle;
 
-#define RX_BUF_SIZE 256
+#define DATA_BUF_SIZE 256
 
 
 
@@ -99,7 +99,7 @@ void StartDataTask(void *argument)
         if ((current_time - last_send_time) >= 100)
         {
             // 打包系统状态数据 (使用 static 以节省堆栈空间)
-            static uint8_t packed_frame[256];
+            static uint8_t packed_frame[DATA_BUF_SIZE];
             const float scale = CR.operation_space.scale;
             const uint8_t state = CR.state;
 
@@ -119,12 +119,12 @@ void StartDataTask(void *argument)
         }
 
         // 批量发送数据
-        static uint8_t tx_buffer[256];
+        static uint8_t tx_buffer[DATA_BUF_SIZE];
         static uint16_t tx_buffer_len = 0;
 
         // 提取并发送
         tx_buffer_len = 0;
-        while (osMessageQueueGet(MotorDataParseQueueHandle, &tx_byte, NULL, 0) == osOK && tx_buffer_len < 256)
+        while (osMessageQueueGet(MotorDataParseQueueHandle, &tx_byte, NULL, 0) == osOK && tx_buffer_len < DATA_BUF_SIZE)
         {
             tx_buffer[tx_buffer_len++] = tx_byte;
         }

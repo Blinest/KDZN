@@ -1,12 +1,26 @@
-//
-// Created by blin on 2026/4/30.
-//
+/**
+ * @file CMCU-06.c
+ * @brief CMCU-06 压力传感器 Modbus-RTU 驱动实现
+ *
+ * 包含 Modbus 帧收发、解析状态机、校准流程、EMA 滤波。
+ *
+ * @date 2026-04-30
+ * @author blin
+ */
 #include "usart.h"
 #include "CMCU-06.h"
 #include "Sensor.h"
+#include "SensorFilter.h"
 #include <string.h>   // for memcpy
 #include "main.h"     // for HAL_Delay
 #include "cmsis_os2.h"
+
+/* 每传感器独立的 EMA 滤波器实例 */
+static SensorFilter s_filters[SENSOR_NUM];
+
+/* Modbus读保持寄存器响应最大字节数: [addr][func][len][data...][CRC_L][CRC_H] */
+#define CMCU_RSP_BUF_SIZE  9
+
 // 内部函数：计算CRC16-Modbus
 static uint16_t CRC16_Modbus(uint8_t *buf, uint8_t len);
 
@@ -123,6 +137,9 @@ void CMCU_06_WriteCalWeight(uint8_t addr, uint16_t weight_10x)
  */
 void CMCU_06_Cal(uint8_t addr, uint16_t weight_10x)
 {
+    /* 校准后丢弃旧滤波状态，下次采样重新初始化 */
+    SensorFilter_Reset(&s_filters[addr - 1]);
+
     // 1. 关闭写入保护
     CMCU_06_Write_Protect(addr, false);
     HAL_Delay(10);
@@ -172,9 +189,6 @@ typedef enum {
     CMCU_PARSE_WAIT_CRC_L,
     CMCU_PARSE_WAIT_CRC_H,
 } CMCU_ParseState_t;
-
-/* Modbus读保持寄存器响应最大字节数: [addr][func][len][data...][CRC_L][CRC_H] */
-#define CMCU_RSP_BUF_SIZE  9
 
 static struct {
     CMCU_ParseState_t state;
@@ -297,6 +311,10 @@ void CMCU_06_Parse_Byte(uint8_t byte)
                     global_sensor[sensor_idx].press_sensor.raw_val = raw * 100;
                     global_sensor[sensor_idx].press_sensor.val = (int32_t)force;
 
+                    /* EMA 软件滤波，输出写入 filter_val */
+                    global_sensor[sensor_idx].press_sensor.filter_val =
+                        SensorFilter_Update(&s_filters[sensor_idx], (int32_t)force);
+
                 }
             }
         }
@@ -307,6 +325,24 @@ void CMCU_06_Parse_Byte(uint8_t byte)
     default:
         CMCU_06_Parse_Reset();
         break;
+    }
+}
+
+/* ==================== 滤波器状态导出/恢复 ==================== */
+
+void CMCU_06_Filter_Export(uint8_t *first_sample_out, int32_t *filter_val_out)
+{
+    for (int i = 0; i < SENSOR_NUM; i++) {
+        first_sample_out[i] = s_filters[i].first_sample;
+        filter_val_out[i]   = s_filters[i].filter_val;
+    }
+}
+
+void CMCU_06_Filter_Restore(const uint8_t *first_sample, const int32_t *filter_val)
+{
+    for (int i = 0; i < SENSOR_NUM; i++) {
+        s_filters[i].first_sample = first_sample[i];
+        s_filters[i].filter_val   = filter_val[i];
     }
 }
 

@@ -1,21 +1,19 @@
-//
-// Created by blin on 2026/3/7.
-//
+/**
+ * @file Motor.h
+ * @brief 电机驱动接口定义
+ *
+ * @date 2026-03-07
+ * @author blin
+ */
 
 #ifndef CONTROLSYSTEM_MOTOR_H
 #define CONTROLSYSTEM_MOTOR_H
-#include "stdint.h"
 
 #include <stdbool.h>
 #include <stdint.h>
-/**********************************************************
-***	编写作者：Lin
 
-***	qq：1071378062
-**********************************************************/
-
-#define MOTOR_NUM 6 // 定义电机数量
-#define MOTOR_ID 7 // 定义电机起始 ID
+#define MOTOR_NUM 6 /**< 电机数量 */
+#define MOTOR_ID 7  /**< 电机起始 ID */
 
 // ==================== Emm_V5 步进闭环：反馈指令帧结构体 ====================
 // 帧格式以 `0x6B` 结尾（文档称“校验字节”，发送端固定为 0x6B）
@@ -132,6 +130,20 @@ void motor_kinematic_control(Kinematic kinematic, float R[], float theta[], floa
 // 新增函数 - 添加于2026-03-27 by Psyduck
 void motor_status_check(void);
 void motor_pressure_control(void);
+
+/**
+ * @brief 导出压力控制内部状态（用于持久化保存）
+ * @param target_out   输出电机目标位置数组，长度 MOTOR_NUM
+ * @param prev_val_out 输出上次触发力值数组，长度 MOTOR_NUM
+ */
+void motor_pressure_export(float *target_out, int32_t *prev_val_out);
+
+/**
+ * @brief 恢复压力控制内部状态（用于断电恢复）
+ * @param target   电机目标位置数组，长度 MOTOR_NUM
+ * @param prev_val 上次触发力值数组，长度 MOTOR_NUM
+ */
+void motor_pressure_restore(const float *target, const int32_t *prev_val);
 
 float motor_angle_to_displacement(uint8_t motor_index, float angle);
 float motor_displacement_to_angle(uint8_t motor_index, float displacement);

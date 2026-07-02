@@ -43,6 +43,7 @@ typedef enum
  FUNC_SENSOR_SINGLE_RD = 0x01,   /* 单传感器数据读取（需要传感器ID） */
  FUNC_SENSOR_MULTI_RD  = 0x02,   /* 多传感器批量读取（无数据段） */
  FUNC_SENSOR_CAL = 0x03,   /* 传感器校准（需要传感器ID） */
+ FUNC_SENSOR_SAVE = 0x04,   /* 保存运行参数到 Flash（无数据段） */
 } SensorFuncCode_t;
 
 /* 帧解析状态机 */
@@ -194,7 +195,13 @@ static void pc_cmd_parse_and_execute(void)
                         uint8_t  sensor_id = s_ctrlBuf[3];
                         uint16_t weight_10x = (s_ctrlBuf[4] << 8) | s_ctrlBuf[5];
                         sensor_cal(sensor_id, weight_10x);
+                        // 校准后自动保存参数到 Flash
+                        param_save();
                     }
+                    break;
+                case FUNC_SENSOR_SAVE:
+                    // 保存运行参数到 Flash（无数据段）
+                    param_save();
                     break;
                 default:
                     break;

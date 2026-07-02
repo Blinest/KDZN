@@ -17,9 +17,6 @@
 #define SENSOR_NUM 6
 
 /**
- * @brief 全局传感器数据结构
- */
-/**
  * @brief IMU 数据结构（纯数据）
  */
 typedef struct {
@@ -122,6 +119,17 @@ void sensor_get_angle_data(uint8_t sensor_id, float* pitch, float* roll, float* 
  * @param weight_10x 砝码重量值 (g×10, 例如 500g → 5000)
  */
 void sensor_cal(uint8_t sensor_id, uint16_t weight_10x);
+
+/**
+ * @brief 保存当前运行参数到内部 Flash（滤波器状态 + 电机控制状态）
+ */
+void param_save(void);
+
+/**
+ * @brief 从内部 Flash 恢复运行参数（启动时自动调用）
+ */
+void param_load(void);
+
 // 全局传感器数组声明
 extern GlobalSensor global_sensor[SENSOR_NUM];
 

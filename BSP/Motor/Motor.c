@@ -1,20 +1,22 @@
-//
-// Created by blin on 2026/3/7.
-//
 /**
-* @file motor.c
+ * @file Motor.c
  * @brief 电机指令处理模块
  *
  * 本模块提供电机指令处理功能：
- * - motor_init()：电机初始化，初始化流程包括电机参数设置、
+ * - motor_init()：电机初始化
  * - motor_run()：启动电机，并设置绝对目标位置
- * - motor_position_control_snf()：
+ * - motor_pressure_control()：基于压力传感器反馈的闭环控制
  * - motor_emergency_stop_all()：紧急停止所有电机
  *
+ * @date 2026-03-07
+ * @author blin
  */
 #include "Motor.h"
 
 #include "math.h"
+#ifndef M_PI
+#define M_PI 3.14159265358979323846f
+#endif
 #include <stdio.h>
 #include "usart.h"
 #include "cmsis_os2.h"
@@ -22,6 +24,14 @@
 // #include "Emm_V5.h"
 #include "X_V2.h"
 #include "CR/SDM.h"
+
+/* ==================== 压力闭环控制参数 ==================== */
+#define PRESS_HIGH      200      /**< 压力上限 */
+#define PRESS_LOW         0      /**< 压力下限 */
+#define PRESS_DELTA      10      /**< 最小力值变化阈值，低于此值视为无明显变化 */
+#define PRESS_STEP_MIN   0.2f    /**< 最小步长 (mm)，精细调整 */
+#define PRESS_STEP_MAX   2.0f    /**< 最大步长 (mm)，快速响应 */
+#define PRESS_VEL        0.5f    /**< 调整速度 (mm/s) */
 
 // 创建电机与电机反馈数据结构体
 MotorFeedback motor_feedback[MOTOR_NUM];
@@ -299,7 +309,7 @@ float motor_angle_to_displacement(uint8_t motor_index, float angle)
 
     // 更新电机结构体中的位置信息
     stepper -> current_pos = displacement;
-    global_motor[motor_index].current_pos = angle * 180.0f / 3.1415926f; // 转换为弧度并存储
+    global_motor[motor_index].current_pos = angle * 180.0f / M_PI;
 
     return displacement;
 }
@@ -329,7 +339,7 @@ float motor_displacement_to_angle(uint8_t motor_index, float displacement)
 
     // 更新电机结构体中的位置信息
     stepper->current_pos = displacement;
-    global_motor[motor_index].current_pos = angle * 180.0f / 3.1415926f; // 转换为弧度并存储
+    global_motor[motor_index].current_pos = angle * 180.0f / M_PI;
 
     return angle;
 }
@@ -353,41 +363,101 @@ void motor_status_check(void)
 }
 
 /**
- * @brief 基于压力传感器反馈的电机独立控制
+ * @brief 基于压力传感器反馈的电机独立控制（动态步长）
  *
- * - val > PRESS_HIGH: 电机前进（释放压力）
- * - val < PRESS_LOW:  电机后退（增加张力）
- * - 目标: 将压力稳定在 ~100
+ * 控制逻辑（双条件触发 + 动态步长）：
+ *   1. 力值超出正常范围 [PRESS_LOW, PRESS_HIGH]
+ *   2. 力值相对上次触发点的变化量 >= PRESS_DELTA
+ *
+ * 动态步长算法：
+ *   step = STEP_MIN + (STEP_MAX - STEP_MIN) × (delta - PRESS_DELTA) / (PRESS_HIGH - PRESS_DELTA)
+ *   限制在 [STEP_MIN, STEP_MAX] 范围内
+ *
+ *   delta 刚过阈值 → 小步长（精细调整）
+ *   delta 接近 PRESS_HIGH → 大步长（快速响应）
+ *
+ * - val > PRESS_HIGH + 变化显著: 电机前进（释放压力）
+ * - val < PRESS_LOW  + 变化显著: 电机后退（增加张力）
  */
-#define PRESS_HIGH  200.0f
-#define PRESS_LOW     0.0f
-#define PRESS_STEP    0.5f   // 每次调整步长 (mm)
-#define PRESS_VEL     0.5f   // 调整速度 (mm/s)
+
+/* 模块级静态变量，供 export/restore 访问 */
+static float s_press_target[MOTOR_NUM];
+static int32_t s_press_prev_val[MOTOR_NUM];
+static bool s_pressure_state_restored = false;  /* true=已从 Flash 恢复，跳过默认初始化 */
+
+void motor_pressure_export(float *target_out, int32_t *prev_val_out)
+{
+    for (int i = 0; i < MOTOR_NUM; i++) {
+        target_out[i]   = s_press_target[i];
+        prev_val_out[i] = s_press_prev_val[i];
+    }
+}
+
+void motor_pressure_restore(const float *target, const int32_t *prev_val)
+{
+    for (int i = 0; i < MOTOR_NUM; i++) {
+        s_press_target[i]   = target[i];
+        s_press_prev_val[i] = prev_val[i];
+    }
+    s_pressure_state_restored = true;
+}
+
+/**
+ * @brief 根据力值变化幅度计算动态步长
+ *
+ * 线性映射: delta [PRESS_DELTA, PRESS_HIGH] → step [STEP_MIN, STEP_MAX]
+ *
+ * @param delta 力值变化幅度（绝对值）
+ * @return 步长 (mm)
+ */
+static float _calc_dynamic_step(int32_t delta)
+{
+    /* delta 归一化到 [0, 1] */
+    float ratio = (float)(delta - PRESS_DELTA) / (float)(PRESS_HIGH - PRESS_DELTA);
+    if (ratio < 0.0f) ratio = 0.0f;
+    if (ratio > 1.0f) ratio = 1.0f;
+
+    /* 线性插值 */
+    float step = PRESS_STEP_MIN + (PRESS_STEP_MAX - PRESS_STEP_MIN) * ratio;
+    return step;
+}
 
 void motor_pressure_control(void)
 {
-    static float target[MOTOR_NUM];
     static bool inited = false;
 
     if (!inited) {
-        for (int i = 0; i < MOTOR_NUM; i++)
-            target[i] = global_motor[i].stepper_motor.current_pos;
+        /* 如果未从 Flash 恢复，则用当前值初始化 */
+        if (!s_pressure_state_restored) {
+            for (int i = 0; i < MOTOR_NUM; i++) {
+                s_press_target[i]   = global_motor[i].stepper_motor.current_pos;
+                s_press_prev_val[i] = global_sensor[i].press_sensor.filter_val;
+            }
+        }
         inited = true;
     }
 
     for (int i = 0; i < MOTOR_NUM; i++) {
-        float val = global_sensor[i].press_sensor.val;
+        int32_t val = global_sensor[i].press_sensor.filter_val;
+        int32_t delta = val - s_press_prev_val[i];
+        if (delta < 0) delta = -delta;
 
-        if (val > PRESS_HIGH) {
-            // 压力过高 → 前进释放
-            target[i] -= PRESS_STEP;
-        } else if (val < PRESS_LOW) {
-            // 压力过低 → 后退收紧
-            target[i] += PRESS_STEP;
-        } else {
-            continue;  // 正常范围，不调整
+        /* 条件1: 力值超出正常范围 */
+        bool out_of_range = (val > PRESS_HIGH) || (val < PRESS_LOW);
+        /* 条件2: 力值相对上次触发有明显变化 */
+        bool significant_change = (delta >= PRESS_DELTA);
+
+        if (out_of_range && significant_change) {
+            /* 动态步长：变化越大，步长越大 */
+            float step = _calc_dynamic_step(delta);
+
+            if (val > PRESS_HIGH) {
+                s_press_target[i] -= step;  // 压力过高 → 前进释放
+            } else {
+                s_press_target[i] += step;  // 压力过低 → 后退收紧
+            }
+            s_press_prev_val[i] = val;
+            motor_run(i, PRESS_VEL, s_press_target[i], 0);
         }
-
-        motor_run(i, PRESS_VEL, target[i], 0);
     }
 }
