@@ -361,7 +361,7 @@ void motor_status_check(void)
  */
 #define PRESS_HIGH  200.0f
 #define PRESS_LOW     0.0f
-#define PRESS_STEP    0.1f   // 每次调整步长 (mm)
+#define PRESS_STEP    0.5f   // 每次调整步长 (mm)
 #define PRESS_VEL     0.5f   // 调整速度 (mm/s)
 
 void motor_pressure_control(void)
