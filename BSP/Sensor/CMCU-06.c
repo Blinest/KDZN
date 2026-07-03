@@ -26,8 +26,14 @@ static uint16_t CRC16_Modbus(uint8_t *buf, uint8_t len);
 
 void CMCU_06_Init(void)
 {
+    /* 初始化 EMA 滤波器 */
+    for (int i = 0; i < SENSOR_NUM; i++) {
+        SensorFilter_Init(&s_filters[i]);
+    }
+
     // 关闭写入保护 -> 复位 -> 恢复写入保护（6个传感器地址1-6）
     // 注意：此函数在调度器启动前调用，必须用 HAL_Delay 而非 osDelay
+    /*
     for (uint8_t i = 1; i <= 6; i++)
     {
         CMCU_06_Write_Protect(i, false);  // 关闭写入保护
@@ -36,6 +42,7 @@ void CMCU_06_Init(void)
         HAL_Delay(50);
         CMCU_06_Write_Protect(i, true);   // 重新打开写入保护
     }
+    */
 }
 
 /**
@@ -303,12 +310,12 @@ void CMCU_06_Parse_Byte(uint8_t byte)
 
 
                  /* 具体转换系数根据实际传感器标定调整 */
-                float force = (float)raw / 100;
+                float force = (float)raw;
 
                 uint8_t sensor_idx = s_cmcu_parse.slave_addr - 1;
                 if (sensor_idx < SENSOR_NUM)
                 {
-                    global_sensor[sensor_idx].press_sensor.raw_val = raw * 100;
+                    global_sensor[sensor_idx].press_sensor.raw_val = force;
                     global_sensor[sensor_idx].press_sensor.val = (int32_t)force;
 
                     /* EMA 软件滤波，输出写入 filter_val */

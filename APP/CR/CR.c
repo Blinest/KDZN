@@ -347,14 +347,27 @@ void CR_kinematic_control(void (*calc)(float R, const float theta[], float phi, 
     motor_sync_control(SDM_WIRES, 0, deltaL);
 }
 
-/* ==================== 压力闭环控制（策略一） ==================== */
+/* ==================== 压力闭环控制（PID同步模式） ==================== */
 
-#define PRESS_HIGH      200      /**< 压力上限 */
-#define PRESS_LOW         0      /**< 压力下限 */
-#define PRESS_DELTA      10      /**< 最小力值变化阈值 */
-#define PRESS_STEP_MIN   0.2f    /**< 最小步长 (mm) */
-#define PRESS_STEP_MAX   2.0f    /**< 最大步长 (mm) */
-#define MOTOR_VEL        1.0f    /**< 调整速度 (mm/s) */
+#define PRESS_HIGH       100      /**< 压力上限 */
+#define PRESS_LOW        -100     /**< 压力下限 */
+#define PRESS_DELTA      8      /**< 最小力值变化阈值 */
+
+/* PID 参数 */
+#define PID_KP           0.01f  /**< 比例增益 */
+#define PID_KI           0.0f    /**< 积分增益（先关掉） */
+#define PID_KD           0.0f    /**< 微分增益（先关掉） */
+#define PID_ILIMIT       50.0f   /**< 积分项限幅 */
+#define PID_OUTPUT_MAX   0.5f    /**< 单次最大输出 (mm) */
+
+/* 每通道 PID 状态 */
+typedef struct {
+    float integral;   /**< 积分累积 */
+    float prev_err;   /**< 上次偏差（用于微分） */
+    bool  initialized;
+} PID_State;
+
+static PID_State s_pid[MOTOR_NUM];
 
 /* 状态变量 */
 static float s_press_target[MOTOR_NUM];
@@ -379,24 +392,11 @@ void CR_pressure_restore(const float *target, const int32_t *prev_val)
 }
 
 /**
- * @brief 动态步长：delta [PRESS_DELTA, PRESS_HIGH] → step [STEP_MIN, STEP_MAX]
- */
-static float _calc_dynamic_step(int32_t delta)
-{
-    float ratio = (float)(delta - PRESS_DELTA) / (float)(PRESS_HIGH - PRESS_DELTA);
-    if (ratio < 0.0f) ratio = 0.0f;
-    if (ratio > 1.0f) ratio = 1.0f;
-    return PRESS_STEP_MIN + (PRESS_STEP_MAX - PRESS_STEP_MIN) * ratio;
-}
-
-/**
- * @brief 压力闭环控制 — 双条件触发 + 动态步长
+ * @brief PID 压力闭环控制 — 同步模式
  *
- * 条件1：力值超出 [PRESS_LOW, PRESS_HIGH]
- * 条件2：力值相对上次触发的变化量 >= PRESS_DELTA
- *
- * 两个条件同时满足才驱动电机。
- * 步长随变化幅度线性增大：delta 小 → 精细调整，delta 大 → 快速响应。
+ * 对每个超限通道计算 PID 输出，一次指令内所有触发通道同步驱动。
+ * 偏差 = 当前值 - 目标边界（PRESS_HIGH 或 PRESS_LOW）
+ * 输出方向：力值偏大 → 回退电机，力值偏小 → 前进电机
  */
 void CR_pressure_control(void)
 {
@@ -406,27 +406,79 @@ void CR_pressure_control(void)
         if (!s_pressure_state_restored) {
             for (int i = 0; i < MOTOR_NUM; i++) {
                 s_press_target[i]   = global_motor[i].stepper_motor.current_pos;
-                s_press_prev_val[i] = global_sensor[i].press_sensor.filter_val;
+                s_press_prev_val[i] = global_sensor[i].press_sensor.val;
+                s_pid[i].integral    = 0.0f;
+                s_pid[i].prev_err    = 0.0f;
+                s_pid[i].initialized = false;
             }
         }
         inited = true;
     }
 
+    uint8_t trigger_idx[MOTOR_NUM];
+    float   trigger_targets[MOTOR_NUM];
+    int     update_count = 0;
+
     for (int i = 0; i < MOTOR_NUM; i++) {
-        int32_t val = global_sensor[i].press_sensor.filter_val;
-        int32_t delta = val - s_press_prev_val[i];
+        int32_t raw_val = global_sensor[i].press_sensor.val;
+
+        /* 计算偏差：超出上限或下限的差值（带符号） */
+        int32_t err = 0;
+        if (raw_val > PRESS_HIGH)
+            err = PRESS_HIGH - raw_val;    /* 负值，需要回退 */
+        else if (raw_val < PRESS_LOW)
+            err = PRESS_LOW - raw_val;     /* 正值，需要前进 */
+        else
+            continue;  /* 在范围内，不触发该通道 */
+
+        int32_t delta = raw_val - s_press_prev_val[i];
         if (delta < 0) delta = -delta;
 
-        if ((val > PRESS_HIGH || val < PRESS_LOW) && delta >= PRESS_DELTA) {
-            float step = _calc_dynamic_step(delta);
+        if (delta >= PRESS_DELTA) {
+            /* PID 计算 */
+            float err_f = (float)err;
 
-            if (val > PRESS_HIGH)
-                s_press_target[i] -= step;
-            else
-                s_press_target[i] += step;
+            /* P 项 */
+            float p_out = PID_KP * err_f;
 
-            s_press_prev_val[i] = val;
-            motor_run(i, MOTOR_VEL, s_press_target[i], 0);
+            /* I 项：偏差积分，带限幅 */
+            if (s_pid[i].initialized) {
+                s_pid[i].integral += err_f;
+            } else {
+                s_pid[i].integral = 0.0f;
+                s_pid[i].initialized = true;
+            }
+            if (s_pid[i].integral > PID_ILIMIT)  s_pid[i].integral = PID_ILIMIT;
+            if (s_pid[i].integral < -PID_ILIMIT) s_pid[i].integral = -PID_ILIMIT;
+            float i_out = PID_KI * s_pid[i].integral;
+
+            /* D 项 */
+            float d_out = 0.0f;
+            if (s_pid[i].initialized) {
+                float derr = err_f - s_pid[i].prev_err;
+                d_out = PID_KD * derr;
+            }
+            s_pid[i].prev_err = err_f;
+
+            /* PID 输出合成 */
+            float output = p_out + i_out + d_out;
+
+            /* 输出限幅 */
+            if (output > PID_OUTPUT_MAX)  output = PID_OUTPUT_MAX;
+            if (output < -PID_OUTPUT_MAX) output = -PID_OUTPUT_MAX;
+
+            s_press_target[i] += output;
+
+            s_press_prev_val[i] = raw_val;
+
+            trigger_idx[update_count] = i;
+            trigger_targets[update_count] = s_press_target[i];
+            update_count++;
         }
+    }
+
+    /* 第2步：仅对触发的通道做同步控制 */
+    if (update_count > 0) {
+        motor_sync_selective_control(update_count, trigger_idx, trigger_targets);
     }
 }

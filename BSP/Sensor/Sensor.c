@@ -35,9 +35,9 @@ void sensor_init(void)
 {
     // 1. 清空传感器数据结构
     for (int i = 0; i < SENSOR_NUM; i++) {
-        global_sensor[i].press_sensor.raw_val = 10.0f;
-        global_sensor[i].press_sensor.filter_val = 0.0f;
-        global_sensor[i].press_sensor.val = 0.0f;
+        global_sensor[i].press_sensor.raw_val = 0;
+        global_sensor[i].press_sensor.filter_val = 0;
+        global_sensor[i].press_sensor.val = 0;
     }
 
     // 2. 初始化 CMCU-06 传感器硬件
