@@ -15,7 +15,7 @@
 #include "math.h"
 #include "Sensor/Sensor.h"
 #include "SDM.h"
-
+#include "cmsis_os2.h"
 
 #define CR_THETA1_MAX 60
 #define CR_THETA1_MIN -40

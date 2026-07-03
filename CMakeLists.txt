@@ -65,6 +65,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         App/CR/CR.c
         BSP/Motor/Motor.c
         BSP/Sensor/IMU.c
+        BSP/Sensor/SensorFilter.c
+        BSP/Storage/FlashStorage.c
 )
 
 # Add include paths
