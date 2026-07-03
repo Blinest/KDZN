@@ -17,7 +17,7 @@
 #include "IMU.h"
 #include "cmsis_os2.h"
 #include "Storage/FlashStorage.h"
-#include "Motor/Motor.h"
+#include "CR/CR.h"
 
 // 初始化全局传感器数组
 GlobalSensor global_sensor[SENSOR_NUM];
@@ -102,7 +102,7 @@ void param_save(void)
     CMCU_06_Filter_Export(data.filter_first_sample, data.filter_val);
 
     /* 导出电机压力控制状态 */
-    motor_pressure_export(data.motor_target, data.prev_val);
+    CR_pressure_export(data.motor_target, data.prev_val);
 
     FlashStorage_Save(&data);
 }
@@ -121,7 +121,7 @@ void param_load(void)
         CMCU_06_Filter_Restore(data.filter_first_sample, data.filter_val);
 
         /* 恢复电机压力控制状态 */
-        motor_pressure_restore(data.motor_target, data.prev_val);
+        CR_pressure_restore(data.motor_target, data.prev_val);
     }
     /* 若加载失败（magic 不匹配），不做任何处理，使用默认初始化值 */
 }

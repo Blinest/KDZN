@@ -11,6 +11,7 @@
 #include "Motor/Motor.h"
 #include "Sensor/Sensor.h"
 #include "CR/SDM.h"
+#include "CR/CR.h"
 #include "usart.h"
 #include "cmsis_os2.h"
 #include "string.h"
@@ -157,7 +158,7 @@ static void pc_cmd_parse_and_execute(void)
                         uint8_t count = s_ctrlBuf[3]; // 电机数量 / 子命令
                         if (count == 0x02 && data_len == 2) {
                             // 压力闭环控制指令
-                            motor_pressure_control();
+                            CR_pressure_control();
                         } else if (data_len >= (1 + count * 3)) {
                             // 检查是否是特殊指令
                             if (count == 1) {

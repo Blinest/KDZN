@@ -124,26 +124,8 @@ void motor_stop_all();
 void motor_single_control(uint8_t idx, uint8_t direction, float distance, float vel);
 void motor_sync_control(uint8_t count, uint8_t start_idx, float distance[]);
 
-typedef void (*Kinematic)(float R[], float theta[], float phi, float deltaL[]);
-void motor_kinematic_control(Kinematic kinematic, float R[], float theta[], float phi, float deltaL[]);
-
 // 新增函数 - 添加于2026-03-27 by Psyduck
 void motor_status_check(void);
-void motor_pressure_control(void);
-
-/**
- * @brief 导出压力控制内部状态（用于持久化保存）
- * @param target_out   输出电机目标位置数组，长度 MOTOR_NUM
- * @param prev_val_out 输出上次触发力值数组，长度 MOTOR_NUM
- */
-void motor_pressure_export(float *target_out, int32_t *prev_val_out);
-
-/**
- * @brief 恢复压力控制内部状态（用于断电恢复）
- * @param target   电机目标位置数组，长度 MOTOR_NUM
- * @param prev_val 上次触发力值数组，长度 MOTOR_NUM
- */
-void motor_pressure_restore(const float *target, const int32_t *prev_val);
 
 float motor_angle_to_displacement(uint8_t motor_index, float angle);
 float motor_displacement_to_angle(uint8_t motor_index, float displacement);

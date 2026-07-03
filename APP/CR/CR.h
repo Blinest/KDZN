@@ -20,53 +20,33 @@
 #define PI 3.14159265358979323846
 #define EPS 1e-9
 
-typedef struct CR_Parameter
-{
-	float r[3];
-} CR_Parameter;
-
 typedef struct JointSpace
 {
-	float target_phi[SDM_SEGMENTS];
-	float target_theta[SDM_SEGMENTS];
-	float total_target_theta;
-	float current_phi;
-	float current_theta[SDM_SEGMENTS];
-	float deltaL[SDM_WIRES];
+    float target_phi[SDM_SEGMENTS];
+    float target_theta[SDM_SEGMENTS];
+    float total_target_theta;
+    float deltaL[SDM_WIRES];
 } JointSpace;
 
 typedef struct OperationSpace
 {
-	float scale;
+    float scale;
 }OperationSpace;
 
 typedef struct ArmParams
 {
-	double L;//每段长度
-	double tendon_preload; // 预紧力
-	double friction_coeff; // 摩擦系数
-
-	double backbone_stiffness; //臂体弯曲刚度
-	double material_damping; //材料阻尼系数
-
-	double calibrate_offset[3]; // 肌腱零点偏移量
-	double direction_gain[4]; //方向增益，对应(u,r,d,l)
+    double L;                /**< 每段长度 (m) */
+    double direction_gain[4]; /**< 方向增益，对应(u,r,d,l) */
 } ArmParams;
 
 typedef struct ContinuumRobot
 {
-	JointSpace joint_space;
-	OperationSpace operation_space;
-	CR_Parameter parameter;
-	ArmParams arm_params[2];
-	bool state;
+    JointSpace joint_space;
+    OperationSpace operation_space;
+    float drive_radius_mm;   /**< 驱动丝半径 (mm) */
+    ArmParams arm_params[2];
+    bool state;
 } ContinuumRobot;
-
-typedef struct {
-    int n_seg;          // 段数（从 arm_params 数量推断，这里固定为1）
-    double *L;          // 每段长度数组（指向 arm_params[0].L 等）
-    int dof;            // 总自由度 = 1(d) + 2*n_seg + 1(ar)
-} robot_params_t;
 
 void CR_init(void);
 uint8_t armBend(int seg, char direction, double val);
@@ -79,4 +59,20 @@ int direction_to_index(char direction);
 double tendonCompensation(int seg, char direction, double angle_deg);
 
 extern ContinuumRobot CR;
+
+/* ==================== 通用运动学入口 ==================== */
+/**
+ * @param calc   运动学函数: (R, theta[], phi, deltaL[]) → 计算丝长变化
+ * @param R      驱动丝半径 (mm)
+ * @param theta  各段弯曲角 (rad), 长度 SDM_SEGMENTS
+ * @param phi    各段弯曲方向 (rad), 长度 SDM_SEGMENTS
+ */
+void CR_kinematic_control(void (*calc)(float R, const float theta[], float phi, float deltaL[]),
+                           float R, const float theta[], const float phi[]);
+
+/* ==================== 压力闭环控制 ==================== */
+void CR_pressure_control(void);
+void CR_pressure_export(float *target_out, int32_t *prev_val_out);
+void CR_pressure_restore(const float *target, const int32_t *prev_val);
+
 #endif

@@ -17,11 +17,7 @@
 #include "SDM.h"
 #include "cmsis_os2.h"
 
-#define CR_THETA1_MAX 60
-#define CR_THETA1_MIN -40
-#define CR_THETA2_MAX 60
-#define CR_THETA2_MIN -40
-#define CR_ANGLE_RANGE 30
+
 #define pi 3.1415926535
 
 /*
@@ -56,9 +52,7 @@ void CR_init(void)
     CR.joint_space.target_phi[0]   = 0.0f;
     CR.joint_space.target_phi[1]   = 0.0f;
 
-    CR.parameter.r[0] = 70;
-    CR.parameter.r[1] = 75;
-    CR.parameter.r[2] = 80;
+    CR.drive_radius_mm = 6.0f;
     motor_init();
     sensor_init();
 }
@@ -104,7 +98,7 @@ static void _sdm_run(void)
         deltaL_actual[i] = global_motor[i].stepper_motor.current_pos;
     }
 
-    float R = CR.parameter.r[0] / 1000.0f;  /* mm → m */
+    float R = CR.drive_radius_mm / 1000.0f;
 
     sdm_step(forces,
              CR.joint_space.target_theta,
@@ -331,4 +325,108 @@ uint8_t armBend_edit(int seg, char direction, double val, double g_u, double g_r
     }
     motor_sync_control(SDM_WIRES, 0, CR.joint_space.deltaL);
     return 0;
+}
+
+/* ==================== 通用运动学入口 ==================== */
+
+void CR_kinematic_control(void (*calc)(float R, const float theta[], float phi, float deltaL[]),
+                           float R, const float theta[], const float phi[])
+{
+    float deltaL[SDM_WIRES] = {0};
+
+    /* 调用运动学计算丝长 */
+    calc(R, theta, phi[0], deltaL);
+
+    /* NaN/Inf 保护 */
+    for (int i = 0; i < SDM_WIRES; i++) {
+        if (isnan(deltaL[i]) || isinf(deltaL[i]))
+            deltaL[i] = 0.0f;
+    }
+
+    /* 同步驱动电机 */
+    motor_sync_control(SDM_WIRES, 0, deltaL);
+}
+
+/* ==================== 压力闭环控制（策略一） ==================== */
+
+#define PRESS_HIGH      200      /**< 压力上限 */
+#define PRESS_LOW         0      /**< 压力下限 */
+#define PRESS_DELTA      10      /**< 最小力值变化阈值 */
+#define PRESS_STEP_MIN   0.2f    /**< 最小步长 (mm) */
+#define PRESS_STEP_MAX   2.0f    /**< 最大步长 (mm) */
+#define MOTOR_VEL        1.0f    /**< 调整速度 (mm/s) */
+
+/* 状态变量 */
+static float s_press_target[MOTOR_NUM];
+static int32_t s_press_prev_val[MOTOR_NUM];
+static bool s_pressure_state_restored = false;
+
+void CR_pressure_export(float *target_out, int32_t *prev_val_out)
+{
+    for (int i = 0; i < MOTOR_NUM; i++) {
+        target_out[i]   = s_press_target[i];
+        prev_val_out[i] = s_press_prev_val[i];
+    }
+}
+
+void CR_pressure_restore(const float *target, const int32_t *prev_val)
+{
+    for (int i = 0; i < MOTOR_NUM; i++) {
+        s_press_target[i]   = target[i];
+        s_press_prev_val[i] = prev_val[i];
+    }
+    s_pressure_state_restored = true;
+}
+
+/**
+ * @brief 动态步长：delta [PRESS_DELTA, PRESS_HIGH] → step [STEP_MIN, STEP_MAX]
+ */
+static float _calc_dynamic_step(int32_t delta)
+{
+    float ratio = (float)(delta - PRESS_DELTA) / (float)(PRESS_HIGH - PRESS_DELTA);
+    if (ratio < 0.0f) ratio = 0.0f;
+    if (ratio > 1.0f) ratio = 1.0f;
+    return PRESS_STEP_MIN + (PRESS_STEP_MAX - PRESS_STEP_MIN) * ratio;
+}
+
+/**
+ * @brief 压力闭环控制 — 双条件触发 + 动态步长
+ *
+ * 条件1：力值超出 [PRESS_LOW, PRESS_HIGH]
+ * 条件2：力值相对上次触发的变化量 >= PRESS_DELTA
+ *
+ * 两个条件同时满足才驱动电机。
+ * 步长随变化幅度线性增大：delta 小 → 精细调整，delta 大 → 快速响应。
+ */
+void CR_pressure_control(void)
+{
+    static bool inited = false;
+
+    if (!inited) {
+        if (!s_pressure_state_restored) {
+            for (int i = 0; i < MOTOR_NUM; i++) {
+                s_press_target[i]   = global_motor[i].stepper_motor.current_pos;
+                s_press_prev_val[i] = global_sensor[i].press_sensor.filter_val;
+            }
+        }
+        inited = true;
+    }
+
+    for (int i = 0; i < MOTOR_NUM; i++) {
+        int32_t val = global_sensor[i].press_sensor.filter_val;
+        int32_t delta = val - s_press_prev_val[i];
+        if (delta < 0) delta = -delta;
+
+        if ((val > PRESS_HIGH || val < PRESS_LOW) && delta >= PRESS_DELTA) {
+            float step = _calc_dynamic_step(delta);
+
+            if (val > PRESS_HIGH)
+                s_press_target[i] -= step;
+            else
+                s_press_target[i] += step;
+
+            s_press_prev_val[i] = val;
+            motor_run(i, MOTOR_VEL, s_press_target[i], 0);
+        }
+    }
 }
