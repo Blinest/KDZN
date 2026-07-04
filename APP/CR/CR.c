@@ -55,6 +55,9 @@ void CR_init(void)
     CR.drive_radius_mm = 6.0f;
     motor_init();
     sensor_init();
+
+    /* 压力灵敏度自动标定 */
+    CR_calibrate_pressure_sensitivity();
 }
 
 // 用于控制喷管弯曲
@@ -351,14 +354,27 @@ void CR_kinematic_control(void (*calc)(float R, const float theta[], float phi, 
 
 #define PRESS_HIGH       100      /**< 压力上限 */
 #define PRESS_LOW        -100     /**< 压力下限 */
-#define PRESS_DELTA      8      /**< 最小力值变化阈值 */
+#define PRESS_DELTA      8        /**< 最小力值变化阈值 */
 
 /* PID 参数 */
-#define PID_KP           0.01f  /**< 比例增益 */
-#define PID_KI           0.0f    /**< 积分增益（先关掉） */
-#define PID_KD           0.0f    /**< 微分增益（先关掉） */
-#define PID_ILIMIT       50.0f   /**< 积分项限幅 */
-#define PID_OUTPUT_MAX   0.5f    /**< 单次最大输出 (mm) */
+#define PID_KP           0.01f    /**< 比例增益 */
+#define PID_KI           0.0f     /**< 积分增益（先关掉） */
+#define PID_KD           0.0f     /**< 微分增益（先关掉） */
+#define PID_ILIMIT       50.0f    /**< 积分项限幅 */
+#define PID_OUTPUT_MAX   0.5f     /**< 单次最大输出 (mm) */
+
+/* 压力灵敏度标定参数 */
+#define CALIB_STEP       0.2f     /**< 标定步长 (mm) */
+#define CALIB_SETTLE_MS  200      /**< 标定稳定等待 (ms) */
+#define CALIB_THRESH     5        /**< 最小有效变化量，低于此视为传感器无响应 */
+
+/**
+ * @brief 每通道压力灵敏度缩放系数
+ *
+ * 标定后：gain_scale[i] 使得各通道对相同 PID 输出产生一致的压力响应。
+ * 默认值为 1.0（未标定时无效）。
+ */
+static float s_gain_scale[MOTOR_NUM] = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
 
 /* 每通道 PID 状态 */
 typedef struct {
@@ -389,6 +405,77 @@ void CR_pressure_restore(const float *target, const int32_t *prev_val)
         s_press_prev_val[i] = prev_val[i];
     }
     s_pressure_state_restored = true;
+}
+
+/* ==================== 压力灵敏度自动标定 ==================== */
+
+/**
+ * @brief 压力灵敏度自动标定
+ *
+ * 原理：每个电机独立前/后移动 CALIB_STEP mm，记录压力变化峰峰值，
+ *       计算缩放系数 gain_scale[i] = 基准幅值 / 实测幅值，
+ *       使各通道对同量 PID 输出产生一致的压力变化。
+ *
+ * 标定结果会被 Flash 持久化保存（配合 param_save）。
+ */
+void CR_calibrate_pressure_sensitivity(void)
+{
+    float fwd[MOTOR_NUM];
+    float bwd[MOTOR_NUM];
+    float amp[MOTOR_NUM];
+    float amp_max = 0.0f;
+    float motor_pos0[MOTOR_NUM];
+
+    /* 1. 记录电机当前位置 */
+    for (int i = 0; i < MOTOR_NUM; i++) {
+        motor_pos0[i] = global_motor[i].stepper_motor.current_pos;
+    }
+
+    /* 2. 统一前进 CALIB_STEP mm（压力增大方向） */
+    for (int i = 0; i < MOTOR_NUM; i++) {
+        motor_run(i, 0.5f, motor_pos0[i] + CALIB_STEP, true);
+    }
+    X_V2_Synchronous_motion(0);
+    osDelay(CALIB_SETTLE_MS);
+    for (int i = 0; i < MOTOR_NUM; i++) {
+        fwd[i] = (float)global_sensor[i].press_sensor.val;
+    }
+
+    /* 3. 后退同样步长 */
+    for (int i = 0; i < MOTOR_NUM; i++) {
+        motor_run(i, 0.5f, motor_pos0[i] - CALIB_STEP, true);
+    }
+    X_V2_Synchronous_motion(0);
+    osDelay(CALIB_SETTLE_MS);
+    for (int i = 0; i < MOTOR_NUM; i++) {
+        bwd[i] = (float)global_sensor[i].press_sensor.val;
+    }
+
+    /* 4. 计算每通道变化幅值（前进-后退的峰峰值） */
+    for (int i = 0; i < MOTOR_NUM; i++) {
+        amp[i] = fabsf(fwd[i] - bwd[i]);
+        if (amp[i] > amp_max) amp_max = amp[i];
+    }
+
+    /* 5. 计算缩放系数 */
+    if (amp_max >= CALIB_THRESH) {
+        for (int i = 0; i < MOTOR_NUM; i++) {
+            if (amp[i] >= CALIB_THRESH)
+                s_gain_scale[i] = amp_max / amp[i];
+            else
+                s_gain_scale[i] = 1.0f;
+        }
+    } else {
+        for (int i = 0; i < MOTOR_NUM; i++)
+            s_gain_scale[i] = 1.0f;
+    }
+
+    /* 6. 回到初始位置 */
+    for (int i = 0; i < MOTOR_NUM; i++) {
+        motor_run(i, 0.5f, motor_pos0[i], true);
+    }
+    X_V2_Synchronous_motion(0);
+    osDelay(CALIB_SETTLE_MS);
 }
 
 /**
@@ -438,8 +525,8 @@ void CR_pressure_control(void)
             /* PID 计算 */
             float err_f = (float)err;
 
-            /* P 项 */
-            float p_out = PID_KP * err_f;
+            /* P 项（含灵敏度归一化） */
+            float p_out = PID_KP * err_f * s_gain_scale[i];
 
             /* I 项：偏差积分，带限幅 */
             if (s_pid[i].initialized) {

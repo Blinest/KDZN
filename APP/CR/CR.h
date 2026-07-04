@@ -70,6 +70,16 @@ extern ContinuumRobot CR;
 void CR_kinematic_control(void (*calc)(float R, const float theta[], float phi, float deltaL[]),
                            float R, const float theta[], const float phi[]);
 
+/* ==================== 压力灵敏度标定 ==================== */
+/**
+ * @brief 执行压力灵敏度自动标定
+ *
+ * 让每个电机前后移动 0.2mm，测量各通道压力变化幅值，
+ * 计算归一化缩放系数 gain_scale[i]，使得各通道对相同 PID 输出
+ * 产生一致的压力响应。
+ */
+void CR_calibrate_pressure_sensitivity(void);
+
 /* ==================== 压力闭环控制 ==================== */
 void CR_pressure_control(void);
 void CR_pressure_export(float *target_out, int32_t *prev_val_out);
