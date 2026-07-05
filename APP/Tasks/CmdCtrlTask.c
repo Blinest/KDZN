@@ -49,6 +49,6 @@ void StartCmdCtrlTask(void *argument)
             }
 	    }
 
-		osDelay(10); // 降低 CPU 占用
+		osDelay(1); // 降低 CPU 占用
 	}
 }

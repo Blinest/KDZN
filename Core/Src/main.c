@@ -110,10 +110,6 @@ int main(void)
   osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
   MX_FREERTOS_Init();
 
-  /* USER CODE BEGIN 3 */
-  CAN_Driver_Init();  // 必须在 osKernelInitialize() 之后，否则 osMessageQueueNew 会失败
-  /* USER CODE END 3 */
-
   /* Start scheduler */
   osKernelStart();
 
@@ -126,8 +122,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    CAN_Driver_Init();  // 必须在 osKernelInitialize() 之后，否则 osMessageQueueNew 会失败
+    /* USER CODE END 3 */
   }
-  /* USER CODE END 3 */
 }
 
 /**

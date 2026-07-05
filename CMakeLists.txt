@@ -59,6 +59,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         App/Common/can_driver.h
         App/Tasks/DataTask.c
         APP/Tasks/CmdCtrlTask.c
+        APP/Tasks/InitTask.c
         App/Common/pc_cmd_parser.c
         APP/Common/sensor_cmd_parser.c
         App/Common/cmd_packer.c

@@ -232,7 +232,7 @@ void CMCU_06_Parse_Byte(uint8_t byte)
     switch (s_cmcu_parse.state)
     {
     case CMCU_PARSE_WAIT_ADDR:
-        /* 从机地址：1-6 为压力传感器 */
+        /* 从机地址：1-6 为压力传感器，0x06 可能是写寄存器回复或地址6 */
         if (byte >= 1 && byte <= 6)
         {
             s_cmcu_parse.slave_addr = byte;
@@ -249,6 +249,10 @@ void CMCU_06_Parse_Byte(uint8_t byte)
             s_cmcu_parse.buf[1] = byte;
             s_cmcu_parse.idx = 2;
             s_cmcu_parse.state = CMCU_PARSE_WAIT_LEN;
+        }
+        else if (byte == 0x06) /* 写寄存器回复（去皮/写保护），直接丢弃重置 */
+        {
+            CMCU_06_Parse_Reset();
         }
         else
         {

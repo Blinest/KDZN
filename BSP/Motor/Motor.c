@@ -129,22 +129,23 @@ void motor_sync_control(uint8_t count, uint8_t start_idx, float distance[])
     {
         motor_run(i, global_motor[i].stepper_motor.target_vel, global_motor[i].target_pos, true);
 
+        /* 等待 TX FIFO 有空间（开启 AutoRetransmission 后由硬件保证送达） */
         uint32_t wait = 50000;
         while (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) < 3 && wait-- > 0) {
             for (volatile int d = 0; d < 48; d++);
         }
         if (wait == 0) {
-            HAL_FDCAN_Stop(&hfdcan1);
-            HAL_Delay(20);
-            HAL_FDCAN_Start(&hfdcan1);
-            HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
-            HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_TX_COMPLETE, 0);
+            /* TX FIFO 满，忙等一帧时间（500kbps 下约 200μs/帧） */
+            for (volatile int d = 0; d < 24000; d++);
+            while (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) < 3) {
+                for (volatile int d = 0; d < 4800; d++);
+            }
         }
-        HAL_Delay(2);
+        for (volatile int d = 0; d < 24000; d++);  // ~50us 帧间隔
     }
 
     X_V2_Synchronous_motion(0);
-    HAL_Delay(10);
+    for (volatile int d = 0; d < 48000; d++);  // ~100us 等待同步完成
 }
 
 // ==================== 选择性多电机同步控制 ====================
@@ -182,17 +183,16 @@ void motor_sync_selective_control(uint8_t count, const uint8_t idx[], const floa
             for (volatile int d = 0; d < 48; d++);
         }
         if (wait == 0) {
-            HAL_FDCAN_Stop(&hfdcan1);
-            HAL_Delay(20);
-            HAL_FDCAN_Start(&hfdcan1);
-            HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
-            HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_TX_COMPLETE, 0);
+            for (volatile int d = 0; d < 24000; d++);
+            while (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) < 3) {
+                for (volatile int d = 0; d < 4800; d++);
+            }
         }
-        HAL_Delay(2);
+        for (volatile int d = 0; d < 24000; d++);
     }
 
     X_V2_Synchronous_motion(0);
-    HAL_Delay(10);
+    for (volatile int d = 0; d < 48000; d++);
 }
 
 // ==================== 角度 ↔ 位移 转换 ====================

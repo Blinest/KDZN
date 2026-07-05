@@ -55,9 +55,10 @@ void CR_init(void)
     CR.drive_radius_mm = 6.0f;
     motor_init();
     sensor_init();
-
+    /* 臂体归中 */
+   //auto_straight();
     /* 压力灵敏度自动标定 */
-    CR_calibrate_pressure_sensitivity();
+    //CR_calibrate_pressure_sensitivity();
 }
 
 // 用于控制喷管弯曲
@@ -72,18 +73,18 @@ uint8_t armBend(int seg, char direction, double val)
 }
 
 /** @brief 从 global_sensor 提取 6 路肌腱力 (N) */
-static void _get_forces(float forces[SENSOR_NUM])
+void cr_get_tendon_forces(float forces[SENSOR_NUM])
 {
     for (int i = 0; i < SENSOR_NUM; i++) {
         forces[i] = global_sensor[i].press_sensor.val;
     }
 }
 
-/** @brief 执行 SDM 一步控制, 结果写入 CR.joint_space.deltaL */
-static void _sdm_run(void)
+/** @brief 执行一步运动学 + 力控计算, 结果写入 CR.joint_space.deltaL */
+void cr_kinematic_step(void)
 {
     float forces[SENSOR_NUM];
-    _get_forces(forces);
+    cr_get_tendon_forces(forces);
 
     /* 力安全前置检查：任意一路超限则跳过本次运动 */
     float force_limit = sdm_get_force_peak_limit();
@@ -125,8 +126,11 @@ void auto_straight(void)
         CR.joint_space.target_phi[i]   = 0;
     }
     CR.operation_space.scale = 0;
-    _sdm_run();
-    motor_sync_control(SDM_WIRES, 0, CR.joint_space.deltaL);
+
+    /* 直接发绝对位置 0 给所有电机，不走 SDM 模型（SDM 在 theta=0 时输出为 0） */
+    float zero_targets[SDM_WIRES] = {0};
+    motor_sync_control(SDM_WIRES, 0, zero_targets);
+    HAL_Delay(10);
 }
 
 /**
@@ -147,7 +151,7 @@ void armRotate(float theta_deg, float step_deg)
     CR.joint_space.target_theta[1] = theta_rad;
     CR.joint_space.target_phi[0]   = 0;
     CR.joint_space.target_phi[1]   = 0;
-    _sdm_run();
+    cr_kinematic_step();
     motor_sync_control(SDM_WIRES, 0, CR.joint_space.deltaL);
     osDelay(4000);
 
@@ -156,7 +160,7 @@ void armRotate(float theta_deg, float step_deg)
     {
         CR.joint_space.target_phi[0] = phi_deg * pi / 180.0f;
         CR.joint_space.target_phi[1] = phi_deg * pi / 180.0f;
-        _sdm_run();
+        cr_kinematic_step();
         motor_sync_control(SDM_WIRES, 0, CR.joint_space.deltaL);
         osDelay(1000);
     }
@@ -319,7 +323,7 @@ uint8_t armBend_edit(int seg, char direction, double val, double g_u, double g_r
         CR.joint_space.target_theta[1] = compensated_angle_rad;
         CR.joint_space.target_phi[1] = phi;
     }
-    _sdm_run();
+    cr_kinematic_step();
 
     // 校验 + 驱动步进电机
     for (int i = 0; i < SDM_WIRES; i++) {
@@ -432,21 +436,33 @@ void CR_calibrate_pressure_sensitivity(void)
     }
 
     /* 2. 统一前进 CALIB_STEP mm（压力增大方向） */
-    for (int i = 0; i < MOTOR_NUM; i++) {
-        motor_run(i, 0.5f, motor_pos0[i] + CALIB_STEP, true);
+    {
+        float targets[MOTOR_NUM];
+        for (int i = 0; i < MOTOR_NUM; i++) {
+            targets[i] = motor_pos0[i] + CALIB_STEP;
+        }
+        motor_sync_control(MOTOR_NUM, 0, targets);
     }
-    X_V2_Synchronous_motion(0);
     osDelay(CALIB_SETTLE_MS);
+    /* 等待 DataTask 读取到最新的传感器数据 */
+    osDelay(300);
+
     for (int i = 0; i < MOTOR_NUM; i++) {
         fwd[i] = (float)global_sensor[i].press_sensor.val;
     }
 
     /* 3. 后退同样步长 */
-    for (int i = 0; i < MOTOR_NUM; i++) {
-        motor_run(i, 0.5f, motor_pos0[i] - CALIB_STEP, true);
+    {
+        float targets[MOTOR_NUM];
+        for (int i = 0; i < MOTOR_NUM; i++) {
+            targets[i] = motor_pos0[i] - CALIB_STEP;
+        }
+        motor_sync_control(MOTOR_NUM, 0, targets);
     }
-    X_V2_Synchronous_motion(0);
     osDelay(CALIB_SETTLE_MS);
+    /* 等待 DataTask 读取到最新的传感器数据 */
+    osDelay(300);
+
     for (int i = 0; i < MOTOR_NUM; i++) {
         bwd[i] = (float)global_sensor[i].press_sensor.val;
     }
@@ -471,10 +487,13 @@ void CR_calibrate_pressure_sensitivity(void)
     }
 
     /* 6. 回到初始位置 */
-    for (int i = 0; i < MOTOR_NUM; i++) {
-        motor_run(i, 0.5f, motor_pos0[i], true);
+    {
+        float targets[MOTOR_NUM];
+        for (int i = 0; i < MOTOR_NUM; i++) {
+            targets[i] = motor_pos0[i];
+        }
+        motor_sync_control(MOTOR_NUM, 0, targets);
     }
-    X_V2_Synchronous_motion(0);
     osDelay(CALIB_SETTLE_MS);
 }
 

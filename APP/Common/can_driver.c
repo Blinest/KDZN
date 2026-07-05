@@ -51,6 +51,9 @@ void CAN_Driver_Init(void)
 	// 激活 Bus Off 错误中断，用于自动恢复
 	HAL_FDCAN_ActivateNotification(&hfdcan1,
 								   FDCAN_IT_BUS_OFF, 0);
+
+	// 等待总线同步完成
+	HAL_Delay(10);
 }
 
 /**

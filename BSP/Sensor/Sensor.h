@@ -92,6 +92,11 @@ void sensor_single_read(uint8_t sensor_id);
 void sensor_multi_read(void);
 
 /**
+ * @brief 传感器重置
+ */
+void sensor_reset(void);
+
+/**
  * @brief 传感器自检函数
  */
 void sensor_self_test(uint8_t sensor_id);

@@ -72,6 +72,28 @@ void sensor_multi_read(void)
     }
 }
 
+
+/**
+ * @brief 传感器数据置零
+ *
+ * 不对传感器进行硬件复位，仅对传感器进行硬件置零。
+ */
+void sensor_reset(void)
+{
+    for (int i = 1; i <= SENSOR_NUM; i++)
+    {
+        CMCU_06_Write_Protect(i, false);  // 1. 关闭写入保护
+        HAL_Delay(1000);
+        CMCU_06_ResetPins(i);             // 2. 去皮置零
+        HAL_Delay(1000);
+        CMCU_06_Write_Protect(i, true);   // 3. 重新打开写入保护
+        HAL_Delay(1000);
+    }
+
+    /* 等待 DataTask 完成一轮传感器读取，确保传感器新值已更新到缓存 */
+    HAL_Delay(1000);
+}
+
 /**
  * @brief 传感器校准函数
  * @param sensor_id 传感器ID (1-6)

@@ -51,7 +51,7 @@
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 128 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for CmdCtrlTask */
@@ -119,13 +119,13 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the queue(s) */
   /* creation of PressDataParseQueue */
-  PressDataParseQueueHandle = osMessageQueueNew (256, sizeof(uint8_t), &PressDataParseQueue_attributes);
+  PressDataParseQueueHandle = osMessageQueueNew (512, sizeof(uint8_t), &PressDataParseQueue_attributes);
 
   /* creation of MotorDataParseQueue */
   MotorDataParseQueueHandle = osMessageQueueNew (512, sizeof(uint8_t), &MotorDataParseQueue_attributes);
 
   /* creation of CmdCtrlQueue */
-  CmdCtrlQueueHandle = osMessageQueueNew (256, sizeof(uint8_t), &CmdCtrlQueue_attributes);
+  CmdCtrlQueueHandle = osMessageQueueNew (512, sizeof(uint8_t), &CmdCtrlQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -158,7 +158,7 @@ void MX_FREERTOS_Init(void) {
   * @retval None
   */
 /* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument)
+__weak void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
   /* Infinite loop */
