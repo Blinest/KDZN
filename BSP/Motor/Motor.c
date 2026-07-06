@@ -145,7 +145,7 @@ void motor_sync_control(uint8_t count, uint8_t start_idx, float distance[])
     }
 
     X_V2_Synchronous_motion(0);
-    for (volatile int d = 0; d < 48000; d++);  // ~100us 等待同步完成
+    HAL_Delay(500);  // 等待同步运动完成
 }
 
 // ==================== 选择性多电机同步控制 ====================

@@ -30,9 +30,10 @@ typedef struct {
  * @brief 压力传感器数据结构（纯数据）
  */
 typedef struct {
- int32_t val;        /**< 转换后的压力值（单位：根据实际定义） */
+ int32_t val;        /**< 转换后的压力值（gain_scale 归一化后） */
  int32_t raw_val;    /**< 原始32位有符号值 */
  int32_t filter_val;
+ float   sensitivity_scale; /**< 灵敏度归一化系数（标定时计算，默认1.0） */
  uint8_t id;         /**< 传感器ID */
 } PressSensor;
 

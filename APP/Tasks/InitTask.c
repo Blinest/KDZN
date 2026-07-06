@@ -22,11 +22,11 @@
 void StartDefaultTask(void *argument)
 {
     /* 等待 CAN 总线稳定 + DataTask 完成多轮数据采集 */
-    osDelay(3000);
+    osDelay(2000);
 
     /* 1. 读取电机状态（等待 DataTask 完成多轮采集，确保 CAN 回复已更新） */
     motor_status_check();
-    osDelay(2000);
+    osDelay(1000);
 
     /* 如果还是没读到数据，再补一次 */
     bool pos_ready = false;
@@ -38,12 +38,12 @@ void StartDefaultTask(void *argument)
     }
     if (!pos_ready) {
         motor_status_check();
-        osDelay(2000);
+        osDelay(1000);
     }
 
     /* 2. 臂体归中（无论是否读到位置，都发送归零指令） */
     auto_straight();
-    osDelay(500);
+    osDelay(1000);
 
     /* 3. 传感器归零（去皮） */
     sensor_reset();
@@ -51,6 +51,10 @@ void StartDefaultTask(void *argument)
 
     /* 4. 压力灵敏度自动标定 */
     CR_calibrate_pressure_sensitivity();
+
+    /* 5. 传感器置零*/
+    sensor_reset();
+    osDelay(300);
 
     /* 初始化完成，后续循环保持最低 CPU 占用 */
     for (;;) {

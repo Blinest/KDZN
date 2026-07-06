@@ -58,6 +58,9 @@ typedef struct {
 	uint8_t data_len;        /**< 数据域长度 */
 	uint16_t crc_calc;       /**< 计算出的 CRC */
 	uint16_t crc_recv;       /**< 接收到的 CRC */
+	uint8_t slave_addr;	  /* 从机地址 */
+	uint8_t func;		  /* 功能码 */
+	uint8_t expected_addr; /* 当前期望的地址（0=未指定） */
 } CMCU_Parser;
 
 

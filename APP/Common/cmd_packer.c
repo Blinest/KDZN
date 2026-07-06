@@ -56,14 +56,14 @@ uint16_t cmd_packer_pack_status_frame(uint8_t* frame, GlobalMotor motor[MOTOR_NU
     // 传感器数据
     for (int i = 0; i < SENSOR_NUM; i++) {
         int32_t raw = sensor[i].press_sensor.raw_val;
-        int32_t val = sensor[i].press_sensor.filter_val;
-        int32_t filter = sensor[i].press_sensor.val;
+        int32_t filter = sensor[i].press_sensor.filter_val;
+        int32_t val = sensor[i].press_sensor.val;
         frame[idx++] = (raw >> 24) & 0xFF; frame[idx++] = (raw >> 16) & 0xFF;
         frame[idx++] = (raw >> 8) & 0xFF; frame[idx++] = raw & 0xFF;
-        frame[idx++] = (val >> 24) & 0xFF; frame[idx++] = (val >> 16) & 0xFF;
-        frame[idx++] = (val >> 8) & 0xFF; frame[idx++] = val & 0xFF;
         frame[idx++] = (filter >> 24) & 0xFF; frame[idx++] = (filter >> 16) & 0xFF;
         frame[idx++] = (filter >> 8) & 0xFF; frame[idx++] = filter & 0xFF;
+        frame[idx++] = (val >> 24) & 0xFF; frame[idx++] = (val >> 16) & 0xFF;
+        frame[idx++] = (val >> 8) & 0xFF; frame[idx++] = val & 0xFF;
     }
     // scale
     int16_t s_val = (int16_t)(lqts->operation_space.scale * 100);

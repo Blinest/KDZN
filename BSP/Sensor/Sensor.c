@@ -38,6 +38,7 @@ void sensor_init(void)
         global_sensor[i].press_sensor.raw_val = 0;
         global_sensor[i].press_sensor.filter_val = 0;
         global_sensor[i].press_sensor.val = 0;
+        global_sensor[i].press_sensor.sensitivity_scale = 1.0f;
     }
 
     // 2. 初始化 CMCU-06 传感器硬件
@@ -92,6 +93,7 @@ void sensor_reset(void)
 
     /* 等待 DataTask 完成一轮传感器读取，确保传感器新值已更新到缓存 */
     HAL_Delay(1000);
+
 }
 
 /**
@@ -126,6 +128,11 @@ void param_save(void)
     /* 导出电机压力控制状态 */
     CR_pressure_export(data.motor_target, data.prev_val);
 
+    /* 导出压力灵敏度归一化系数 */
+    for (int i = 0; i < SENSOR_NUM; i++) {
+        data.sensitivity_scale[i] = global_sensor[i].press_sensor.sensitivity_scale;
+    }
+
     FlashStorage_Save(&data);
 }
 
@@ -144,6 +151,12 @@ void param_load(void)
 
         /* 恢复电机压力控制状态 */
         CR_pressure_restore(data.motor_target, data.prev_val);
+
+        /* 恢复压力灵敏度归一化系数 */
+        for (int i = 0; i < SENSOR_NUM; i++) {
+            if (data.sensitivity_scale[i] > 0.0f)
+                global_sensor[i].press_sensor.sensitivity_scale = data.sensitivity_scale[i];
+        }
     }
     /* 若加载失败（magic 不匹配），不做任何处理，使用默认初始化值 */
 }

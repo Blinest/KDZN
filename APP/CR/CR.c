@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include "math.h"
 #include "Sensor/Sensor.h"
+#include "Sensor/CMCU-06.h"
 #include "SDM.h"
 #include "cmsis_os2.h"
 
@@ -130,7 +131,7 @@ void auto_straight(void)
     /* 直接发绝对位置 0 给所有电机，不走 SDM 模型（SDM 在 theta=0 时输出为 0） */
     float zero_targets[SDM_WIRES] = {0};
     motor_sync_control(SDM_WIRES, 0, zero_targets);
-    HAL_Delay(10);
+    HAL_Delay(500); // 半双工通信，确保臂体完全归中后再次发送数据
 }
 
 /**
@@ -368,17 +369,9 @@ void CR_kinematic_control(void (*calc)(float R, const float theta[], float phi, 
 #define PID_OUTPUT_MAX   0.5f     /**< 单次最大输出 (mm) */
 
 /* 压力灵敏度标定参数 */
-#define CALIB_STEP       0.2f     /**< 标定步长 (mm) */
-#define CALIB_SETTLE_MS  200      /**< 标定稳定等待 (ms) */
-#define CALIB_THRESH     5        /**< 最小有效变化量，低于此视为传感器无响应 */
-
-/**
- * @brief 每通道压力灵敏度缩放系数
- *
- * 标定后：gain_scale[i] 使得各通道对相同 PID 输出产生一致的压力响应。
- * 默认值为 1.0（未标定时无效）。
- */
-static float s_gain_scale[MOTOR_NUM] = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+#define CALIB_STEP       1.0f     /**< 标定步长 (mm) */
+#define CALIB_SETTLE_MS  1000      /**< 标定稳定等待 (ms) */
+#define CALIB_THRESH     3        /**< 最小有效变化量，低于此视为传感器无响应 */
 
 /* 每通道 PID 状态 */
 typedef struct {
@@ -412,22 +405,20 @@ void CR_pressure_restore(const float *target, const int32_t *prev_val)
 }
 
 /* ==================== 压力灵敏度自动标定 ==================== */
-
 /**
  * @brief 压力灵敏度自动标定
  *
  * 原理：每个电机独立前/后移动 CALIB_STEP mm，记录压力变化峰峰值，
- *       计算缩放系数 gain_scale[i] = 基准幅值 / 实测幅值，
+ *       计算缩放系数 sensitivity_scale[i] = 基准幅值 / 实测幅值，
  *       使各通道对同量 PID 输出产生一致的压力变化。
  *
  * 标定结果会被 Flash 持久化保存（配合 param_save）。
  */
 void CR_calibrate_pressure_sensitivity(void)
 {
-    float fwd[MOTOR_NUM];
-    float bwd[MOTOR_NUM];
+    float fwd[SENSOR_NUM];
+    float bwd[SENSOR_NUM];
     float amp[MOTOR_NUM];
-    float amp_max = 0.0f;
     float motor_pos0[MOTOR_NUM];
 
     /* 1. 记录电机当前位置 */
@@ -445,10 +436,16 @@ void CR_calibrate_pressure_sensitivity(void)
     }
     osDelay(CALIB_SETTLE_MS);
     /* 等待 DataTask 读取到最新的传感器数据 */
-    osDelay(300);
+    osDelay(1000);
+    /* 主动触发一轮传感器解析，确保 fwd 读到最新值 */
+    for (int i = 1; i <= SENSOR_NUM; i++) {
+        CMCU_06_single_read(i);
+        osDelay(250);
+    }
+    osDelay(1000);
 
-    for (int i = 0; i < MOTOR_NUM; i++) {
-        fwd[i] = (float)global_sensor[i].press_sensor.val;
+    for (int i = 0; i < SENSOR_NUM; i++) {
+        fwd[i] = (float)global_sensor[i].press_sensor.raw_val;
     }
 
     /* 3. 后退同样步长 */
@@ -459,31 +456,55 @@ void CR_calibrate_pressure_sensitivity(void)
         }
         motor_sync_control(MOTOR_NUM, 0, targets);
     }
+
     osDelay(CALIB_SETTLE_MS);
     /* 等待 DataTask 读取到最新的传感器数据 */
-    osDelay(300);
+    osDelay(1000);
 
-    for (int i = 0; i < MOTOR_NUM; i++) {
-        bwd[i] = (float)global_sensor[i].press_sensor.val;
+    /* 主动触发一轮传感器解析，确保 bwd 读到最新值 */
+    for (int i = 0; i <= SENSOR_NUM; i++) {
+        CMCU_06_single_read(i);
+        osDelay(250);
+    }
+    osDelay(500);
+
+    for (int i = 0; i < SENSOR_NUM; i++) {
+        bwd[i] = (float)global_sensor[i].press_sensor.raw_val;
     }
 
     /* 4. 计算每通道变化幅值（前进-后退的峰峰值） */
     for (int i = 0; i < MOTOR_NUM; i++) {
         amp[i] = fabsf(fwd[i] - bwd[i]);
-        if (amp[i] > amp_max) amp_max = amp[i];
     }
 
-    /* 5. 计算缩放系数 */
-    if (amp_max >= CALIB_THRESH) {
-        for (int i = 0; i < MOTOR_NUM; i++) {
-            if (amp[i] >= CALIB_THRESH)
-                s_gain_scale[i] = amp_max / amp[i];
-            else
-                s_gain_scale[i] = 1.0f;
+    /* 5. 找最小值（最不灵敏通道）作为基准 */
+    {
+        float amp_min = 0.0f;
+        bool have_valid = false;
+
+        for (int i = 0; i < SENSOR_NUM; i++) {
+            if (amp[i] >= CALIB_THRESH) {
+                if (!have_valid) {
+                    amp_min = amp[i];
+                    have_valid = true;
+                } else if (amp[i] < amp_min) {
+                    amp_min = amp[i];
+                }
+            }
         }
-    } else {
-        for (int i = 0; i < MOTOR_NUM; i++)
-            s_gain_scale[i] = 1.0f;
+
+        if (have_valid) {
+            for (int i = 0; i < SENSOR_NUM; i++) {
+                if (amp[i] >= CALIB_THRESH)
+                    global_sensor[i].press_sensor.sensitivity_scale = amp_min / amp[i];
+                else
+                    global_sensor[i].press_sensor.sensitivity_scale = 1.0f;
+            }
+        } else {
+            /* 没有任何通道达到阈值：所有通道保持 1.0 */
+            for (int i = 0; i < SENSOR_NUM; i++)
+                global_sensor[i].press_sensor.sensitivity_scale = 1.0f;
+        }
     }
 
     /* 6. 回到初始位置 */
@@ -495,6 +516,13 @@ void CR_calibrate_pressure_sensitivity(void)
         motor_sync_control(MOTOR_NUM, 0, targets);
     }
     osDelay(CALIB_SETTLE_MS);
+
+    /* 7. 主动触发一轮传感器读取，让新 sensitivity_scale 生效 */
+    for (int i = 0; i < SENSOR_NUM; i++) {
+        CMCU_06_single_read(i + 1);
+        osDelay(20);
+    }
+    osDelay(200);  /* 等待 DataTask 解析完所有回复 */
 }
 
 /**
@@ -544,8 +572,8 @@ void CR_pressure_control(void)
             /* PID 计算 */
             float err_f = (float)err;
 
-            /* P 项（含灵敏度归一化） */
-            float p_out = PID_KP * err_f * s_gain_scale[i];
+            /* P 项（val 已由 sensitivity_scale 归一化，直接使用） */
+            float p_out = PID_KP * err_f;
 
             /* I 项：偏差积分，带限幅 */
             if (s_pid[i].initialized) {

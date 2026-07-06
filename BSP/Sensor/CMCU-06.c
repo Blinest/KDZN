@@ -162,6 +162,8 @@ void CMCU_06_Cal(uint8_t addr, uint16_t weight_10x)
     // 4. 重新打开写入保护
     CMCU_06_Write_Protect(addr, true);
 }
+static CMCU_Parser s_cmcu_parse;
+
 
 /**
  * 单次读取传感器数据
@@ -187,35 +189,19 @@ void CMCU_06_single_read(uint8_t addr)
 
 /* ==================== Modbus-RTU 响应解析 ==================== */
 
-/* 解析状态机 */
-typedef enum {
-    CMCU_PARSE_WAIT_ADDR = 0,
-    CMCU_PARSE_WAIT_FUNC,
-    CMCU_PARSE_WAIT_LEN,
-    CMCU_PARSE_WAIT_DATA,
-    CMCU_PARSE_WAIT_CRC_L,
-    CMCU_PARSE_WAIT_CRC_H,
-} CMCU_ParseState_t;
-
-static struct {
-    CMCU_ParseState_t state;
-    uint8_t buf[CMCU_RSP_BUF_SIZE];
-    uint8_t idx;
-    uint8_t data_len;   /* 数据字段字节数（来自第3字节） */
-    uint8_t slave_addr; /* 从机地址 */
-    uint8_t func;       /* 功能码 */
-} s_cmcu_parse;
+/* CMCU_Parser 定义在 SensorParser.h */
 
 /**
  * @brief 复位Modbus-RTU解析状态机
  */
 void CMCU_06_Parse_Reset(void)
 {
-    s_cmcu_parse.state = CMCU_PARSE_WAIT_ADDR;
+    s_cmcu_parse.state = CMCU_STATE_HEAD;
     s_cmcu_parse.idx = 0;
     s_cmcu_parse.data_len = 0;
     s_cmcu_parse.slave_addr = 0;
     s_cmcu_parse.func = 0;
+    s_cmcu_parse.expected_addr = 0;
 }
 
 /**
@@ -231,24 +217,24 @@ void CMCU_06_Parse_Byte(uint8_t byte)
 {
     switch (s_cmcu_parse.state)
     {
-    case CMCU_PARSE_WAIT_ADDR:
-        /* 从机地址：1-6 为压力传感器，0x06 可能是写寄存器回复或地址6 */
+    case CMCU_STATE_HEAD:
+        /* 从机地址：1-6 为压力传感器 */
         if (byte >= 1 && byte <= 6)
         {
             s_cmcu_parse.slave_addr = byte;
             s_cmcu_parse.buf[0] = byte;
             s_cmcu_parse.idx = 1;
-            s_cmcu_parse.state = CMCU_PARSE_WAIT_FUNC;
+            s_cmcu_parse.state = CMCU_STATE_FUNC;
         }
         break;
 
-    case CMCU_PARSE_WAIT_FUNC:
+    case CMCU_STATE_FUNC:
         if (byte == 0x03) /* 读保持寄存器功能码 */
         {
             s_cmcu_parse.func = byte;
             s_cmcu_parse.buf[1] = byte;
             s_cmcu_parse.idx = 2;
-            s_cmcu_parse.state = CMCU_PARSE_WAIT_LEN;
+            s_cmcu_parse.state = CMCU_STATE_LEN;
         }
         else if (byte == 0x06) /* 写寄存器回复（去皮/写保护），直接丢弃重置 */
         {
@@ -260,14 +246,14 @@ void CMCU_06_Parse_Byte(uint8_t byte)
         }
         break;
 
-    case CMCU_PARSE_WAIT_LEN:
+    case CMCU_STATE_LEN:
         s_cmcu_parse.data_len = byte;
         s_cmcu_parse.buf[2] = byte;
         s_cmcu_parse.idx = 3;
 
         if (s_cmcu_parse.data_len == 4) /* 期望4字节数据（2个寄存器） */
         {
-            s_cmcu_parse.state = CMCU_PARSE_WAIT_DATA;
+            s_cmcu_parse.state = CMCU_STATE_DATA;
         }
         else
         {
@@ -275,7 +261,7 @@ void CMCU_06_Parse_Byte(uint8_t byte)
         }
         break;
 
-    case CMCU_PARSE_WAIT_DATA:
+    case CMCU_STATE_DATA:
         if (s_cmcu_parse.idx < CMCU_RSP_BUF_SIZE)
         {
             s_cmcu_parse.buf[s_cmcu_parse.idx++] = byte;
@@ -284,16 +270,16 @@ void CMCU_06_Parse_Byte(uint8_t byte)
         /* 已收完 data_len 字节数据？ */
         if (s_cmcu_parse.idx >= (uint8_t)(3 + s_cmcu_parse.data_len))
         {
-            s_cmcu_parse.state = CMCU_PARSE_WAIT_CRC_L;
+            s_cmcu_parse.state = CMCU_STATE_CRC1;
         }
         break;
 
-    case CMCU_PARSE_WAIT_CRC_L:
+    case CMCU_STATE_CRC1:
         s_cmcu_parse.buf[s_cmcu_parse.idx++] = byte;
-        s_cmcu_parse.state = CMCU_PARSE_WAIT_CRC_H;
+        s_cmcu_parse.state = CMCU_STATE_CRC2;
         break;
 
-    case CMCU_PARSE_WAIT_CRC_H:
+    case CMCU_STATE_CRC2:
         s_cmcu_parse.buf[s_cmcu_parse.idx++] = byte;
 
         /* 完整帧已接收，验证CRC并提取数据 */
@@ -319,8 +305,13 @@ void CMCU_06_Parse_Byte(uint8_t byte)
                 uint8_t sensor_idx = s_cmcu_parse.slave_addr - 1;
                 if (sensor_idx < SENSOR_NUM)
                 {
-                    global_sensor[sensor_idx].press_sensor.raw_val = force;
-                    global_sensor[sensor_idx].press_sensor.val = (int32_t)force;
+                    global_sensor[sensor_idx].press_sensor.raw_val = (int32_t)force;
+
+                    /* 用 sensitivity_scale 归一化后写入 val */
+                    float scale = global_sensor[sensor_idx].press_sensor.sensitivity_scale;
+                    if (scale <= 0.0f) scale = 1.0f;
+                    global_sensor[sensor_idx].press_sensor.val =
+                        (int32_t)(force * scale);
 
                     /* EMA 软件滤波，输出写入 filter_val */
                     global_sensor[sensor_idx].press_sensor.filter_val =

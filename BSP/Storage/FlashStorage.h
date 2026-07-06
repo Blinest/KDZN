@@ -36,7 +36,8 @@ typedef struct {
     int32_t  filter_val[SENSOR_NUM_LOCAL];        /* EMA 滤波器当前输出 */
     float    motor_target[SENSOR_NUM_LOCAL];      /* 压力控制电机目标位置 */
     int32_t  prev_val[SENSOR_NUM_LOCAL];          /* 上次触发时的力值 */
-    uint8_t  reserved1[16];                      /* 保留，对齐到 128 字节 */
+    float    sensitivity_scale[SENSOR_NUM_LOCAL];  /* 压力灵敏度归一化系数 */
+    uint8_t  reserved1[4];                       /* 保留，对齐到 128 字节 */
 } __attribute__((aligned(32))) FlashStoreData;
 
 /**

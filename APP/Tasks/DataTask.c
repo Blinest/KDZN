@@ -59,7 +59,7 @@ void StartDataTask(void *argument)
         }
 
         // 每100ms读取一次传感器数据
-        if ((current_time - last_sensor_read_time) >= 100)
+        if ((current_time - last_sensor_read_time) >= 200)
         {
             // 读取6个压力传感器（地址1-6）
             sensor_multi_read();
