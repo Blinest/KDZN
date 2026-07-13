@@ -43,9 +43,8 @@ void CR_init(void)
      * 臂体水平安装，沿X轴方向 */
     CR.arm_params[0].L = 0.225;
     CR.arm_params[1].L = 0.225;
-    float cable_r[SDM_SEGMENTS] = { 0.030f, 0.030f };
     float mount_dir[3] = { 1.0f, 0.0f, 0.0f };  /* 水平沿X轴 */
-    sdm_init(cable_r, 0.2f, 100.0f, 0.3f, 0.15f, mount_dir);
+    sdm_init(0.2f, 100.0f, 0.3f, 0.15f, mount_dir);
 
     CR.operation_space.scale = 20;
     CR.joint_space.target_theta[0] = 0.5f;

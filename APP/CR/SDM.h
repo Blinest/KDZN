@@ -13,11 +13,7 @@
 #ifndef __SDM_H
 #define __SDM_H
 
-#include <stdint.h>
 #include <stdbool.h>
-#include <math.h>
-#include <string.h>
-#include <stdlib.h>
 #include "Sensor/Sensor.h"
 
 #ifdef __cplusplus
@@ -35,14 +31,10 @@ extern "C" {
 #define SDM_WIRES_PER_SEG   3
 #endif
 
-#define SDM_PI       3.14159265358979323846f
-#define SDM_EPS      1e-9f
-
 /* ==================== 对外 API ==================== */
 
 /**
  * @brief 初始化 SDM 模块。
- * @param cable_radius       每段驱动丝半径数组 (m, [2])
  * @param bending_stiffness  弯曲刚度 (N·m/rad)
  * @param force_peak_limit   力峰值上限 (N)
  * @param force_recovery     恢复阈值 [0~1]
@@ -51,8 +43,7 @@ extern "C" {
  *                           水平安装传 [1,0,0] 或 [0,1,0]，竖直传 [0,0,1]
  *                           NULL 则默认竖直向上
  */
-void sdm_init(const float cable_radius[SDM_SEGMENTS],
-              float bending_stiffness,
+void sdm_init(float bending_stiffness,
               float force_peak_limit,
               float force_recovery,
               float tip_mass,

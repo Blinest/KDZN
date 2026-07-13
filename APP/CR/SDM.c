@@ -16,10 +16,9 @@
 #include "CR.h"
 #include <math.h>
 #include <string.h>
-#include <stddef.h>
-#include <stdlib.h>
 
 /* ==================== 内部常量 ==================== */
+#define SDM_PI      3.14159265358979323846f
 #define SDM_PI_3    1.0471975511965976f
 #define SDM_2PI_3   2.0943951023931953f
 #define SDM_4PI_3   4.1887902047863905f
@@ -28,9 +27,7 @@
 
 /* ==================== 内部状态 ==================== */
 typedef struct {
-    float cable_radius[SDM_SEGMENTS];
     float bending_stiffness;
-    float damping_coeff;
     float force_peak_limit;
     float force_recovery;
     float tip_mass;
@@ -171,7 +168,7 @@ static void _inverse_kinematics(const float deltaL_actual[SDM_WIRES],
 }
 
 /* ==================== 力安全因子 (内部) ==================== */
-static float _force_safety(const float forces[SENSOR_NUM],
+static void _force_safety(const float forces[SENSOR_NUM],
                            float *safety, bool *over_peak)
 {
     float f_max = 0.0f;
@@ -181,7 +178,6 @@ static float _force_safety(const float forces[SENSOR_NUM],
     *over_peak = (f_max >= s_params.force_peak_limit);
     *safety = _clampf(1.0f - f_max / s_params.force_peak_limit,
                       s_params.force_recovery, 1.0f);
-    return f_max;
 }
 
 /* ==================== 简化动力学模型 ==================== */
@@ -326,16 +322,13 @@ static void _compute_k_ratio(const float forces[SENSOR_NUM],
 
 /* ==================== 对外 API ==================== */
 
-void sdm_init(const float cable_radius[SDM_SEGMENTS],
-              float bending_stiffness,
+void sdm_init(float bending_stiffness,
               float force_peak_limit,
               float force_recovery,
               float tip_mass,
               const float mount_dir[3])
 {
-    if (cable_radius) memcpy(s_params.cable_radius, cable_radius, sizeof(s_params.cable_radius));
     s_params.bending_stiffness = bending_stiffness;
-    s_params.damping_coeff     = 50.0f;
     s_params.force_peak_limit  = force_peak_limit;
     s_params.force_recovery    = force_recovery;
     s_params.tip_mass          = tip_mass;
