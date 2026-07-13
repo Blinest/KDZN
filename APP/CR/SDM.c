@@ -24,6 +24,8 @@
 #define SDM_4PI_3   4.1887902047863905f
 #define SDM_5PI_3   5.235987755982988f
 #define SDM_EPS     1e-9f
+#define SDM_M_TO_MM 1000.0f
+#define SDM_MM_TO_M 0.001f
 
 /* ==================== 内部状态 ==================== */
 typedef struct {
@@ -33,6 +35,7 @@ typedef struct {
     float tip_mass;
     float gravity;
     float R_mount[3][3];    /**< 臂体初始安装姿态 (世界→基座局部) */
+    SDM_DynamicsConfig dynamics;
 } SDM_InternalParams;
 
 static SDM_InternalParams s_params = {0};
@@ -40,6 +43,8 @@ static bool s_initialized = false;
 
 /* k_ratio 不对外暴露 */
 static float s_k_ratio[SDM_WIRES];
+static float s_force_target[SDM_WIRES];
+static bool s_force_target_valid = false;
 
 /* 段 → 驱动丝索引 */
 static const int s_seg_to_wires[SDM_SEGMENTS][SDM_WIRES_PER_SEG] = {
@@ -96,8 +101,8 @@ static void _build_mount_matrix(const float dir[3], float R[3][3])
 }
 
 /* ==================== PCC 逆运动学 (内部) ==================== */
-static void _calculate_L(float R, const float theta[SDM_SEGMENTS],
-                         const float phi[SDM_SEGMENTS], float deltaL[SDM_WIRES])
+static void _calculate_L_m(float R, const float theta[SDM_SEGMENTS],
+                           const float phi[SDM_SEGMENTS], float deltaL[SDM_WIRES])
 {
     deltaL[0] = -R * theta[0] * cosf(phi[0]);
     deltaL[2] = -R * theta[0] * cosf(phi[0] + SDM_2PI_3);
@@ -109,6 +114,15 @@ static void _calculate_L(float R, const float theta[SDM_SEGMENTS],
                 - R * theta[1] * cosf(phi[1] + SDM_PI);
     deltaL[5] = -R * theta[0] * cosf(phi[0] + SDM_5PI_3)
                 - R * theta[1] * cosf(phi[1] + SDM_5PI_3);
+}
+
+static void _calculate_L(float R, const float theta[SDM_SEGMENTS],
+                         const float phi[SDM_SEGMENTS], float deltaL[SDM_WIRES])
+{
+    _calculate_L_m(R, theta, phi, deltaL);
+    for (int i = 0; i < SDM_WIRES; i++) {
+        deltaL[i] *= SDM_M_TO_MM;
+    }
 }
 
 /* ==================== PCC 正解反推 (内部) ==================== */
@@ -141,10 +155,16 @@ static void _inverse_kinematics(const float deltaL_actual[SDM_WIRES],
     if (R < SDM_EPS) R = 0.03f;
     float sqrt3_inv = 1.0f / sqrtf(3.0f);
 
+    /* Motor feedback and public SDM displacement values are millimetres. */
+    float deltaL_m[SDM_WIRES];
+    for (int i = 0; i < SDM_WIRES; i++) {
+        deltaL_m[i] = deltaL_actual[i] * SDM_MM_TO_M;
+    }
+
     /* ——— 段0: 丝0,2,4 角度 {0, 2π/3, 4π/3} ——— */
-    float c0 = -deltaL_actual[0] / R;
-    float c1 = -deltaL_actual[2] / R;
-    float c2 = -deltaL_actual[4] / R;
+    float c0 = -deltaL_m[0] / R;
+    float c1 = -deltaL_m[2] / R;
+    float c2 = -deltaL_m[4] / R;
 
     float diff = c2 - c1;
     theta_out[0] = sqrtf(c0 * c0 + diff * diff / 3.0f);
@@ -157,9 +177,9 @@ static void _inverse_kinematics(const float deltaL_actual[SDM_WIRES],
     float s0_contribution_5 = -R * theta_out[0] * cosf(phi_out[0] + SDM_5PI_3);
 
     /* 段1 独立贡献 (注意丝3,5 的公式里段1项是负号) */
-    float d0 = (deltaL_actual[1] - s0_contribution_1) / R;   /* θ₁ cos(φ₁ + π/3) */
-    float d1 = -(deltaL_actual[3] - s0_contribution_3) / R;  /* θ₁ cos(φ₁ + π) */
-    float d2 = -(deltaL_actual[5] - s0_contribution_5) / R;  /* 新增传感器校准功能θ₁ cos(φ₁ + 5π/3) */
+    float d0 = (deltaL_m[1] - s0_contribution_1) / R;   /* θ₁ cos(φ₁ + π/3) */
+    float d1 = -(deltaL_m[3] - s0_contribution_3) / R;  /* θ₁ cos(φ₁ + π) */
+    float d2 = -(deltaL_m[5] - s0_contribution_5) / R;  /* θ₁ cos(φ₁ + 5π/3) */
 
     diff = d2 - d1;
     theta_out[1] = sqrtf(d0 * d0 + diff * diff / 3.0f);
@@ -180,7 +200,7 @@ static void _force_safety(const float forces[SENSOR_NUM],
                       s_params.force_recovery, 1.0f);
 }
 
-/* ==================== 简化动力学模型 ==================== */
+/* ==================== Cosserat/PCC quasi-static dynamics ==================== */
 
 /* 各段每根丝的角度 (相对于局部X轴, 与 _calculate_L 公式一致) */
 static const float s_wire_alpha[SDM_SEGMENTS][SDM_WIRES_PER_SEG] = {
@@ -188,116 +208,174 @@ static const float s_wire_alpha[SDM_SEGMENTS][SDM_WIRES_PER_SEG] = {
     { SDM_PI_3, SDM_PI,   SDM_5PI_3 }    /* 段1: 丝1=60°, 丝3=180°, 丝5=300° */
 };
 
-/**
- * @brief 简化动力学模型: 弯曲角 → 每根丝实时目标拉力
- *
- * 两项叠加:
- *   f_target_i = f_geom + f_grav
- *
- *   f_geom  = K_bend × θ × |ΔL_i| / (R × L_seg × Σ|ΔL_j|)
- *             PCC 几何项，丝长变化越大拉力越大
- *
- *   f_grav  = |g_proj_i| × (L_arm / L_total)
- *             重力补偿项，由虚拟中心杆实时姿态决定
- *
- * R_acc 累积旋转的执行顺序:
- *   段0 循环: R_acc=I → 算段0 的 f_target → R_acc = I×R_local_0
- *   段1 循环: R_acc=I×R_local_0 → 算段1 的 f_target → R_acc = I×R_local_0×R_local_1
- *   即: 段1 的重力投影已经包含了段0 弯曲后的姿态
- *
- * @param theta_actual   实际各段弯曲角 (rad, [2])
- * @param phi_actual     实际各段弯曲方向角 (rad, [2])
- * @param R              驱动丝半径 (m)
- * @param f_target_out   输出: 每根丝的目标拉力 (N, [6])
- */
+static void _mat3_mul(const float A[3][3], const float B[3][3], float C[3][3])
+{
+    for (int r = 0; r < 3; r++)
+        for (int c = 0; c < 3; c++) {
+            C[r][c] = 0.0f;
+            for (int k = 0; k < 3; k++) C[r][c] += A[r][k] * B[k][c];
+        }
+}
+
+static void _mat3_vec(const float A[3][3], const float v[3], float out[3])
+{
+    for (int r = 0; r < 3; r++)
+        out[r] = A[r][0] * v[0] + A[r][1] * v[1] + A[r][2] * v[2];
+}
+
+static void _mat3_t_vec(const float A[3][3], const float v[3], float out[3])
+{
+    for (int c = 0; c < 3; c++)
+        out[c] = A[0][c] * v[0] + A[1][c] * v[1] + A[2][c] * v[2];
+}
+
+static void _cross3(const float a[3], const float b[3], float out[3])
+{
+    out[0] = a[1] * b[2] - a[2] * b[1];
+    out[1] = a[2] * b[0] - a[0] * b[2];
+    out[2] = a[0] * b[1] - a[1] * b[0];
+}
+
+static void _pcc_pose(float theta, float phi, float length,
+                      float p[3], float R_local[3][3])
+{
+    float cp = cosf(phi), sp = sinf(phi);
+    float ct = cosf(theta), st = sinf(theta);
+    R_local[0][0] = cp*cp*(ct-1.0f)+1.0f;
+    R_local[0][1] = sp*cp*(ct-1.0f);
+    R_local[0][2] = cp*st;
+    R_local[1][0] = sp*cp*(ct-1.0f);
+    R_local[1][1] = cp*cp*(1.0f-ct)+ct;
+    R_local[1][2] = sp*st;
+    R_local[2][0] = -cp*st;
+    R_local[2][1] = -sp*st;
+    R_local[2][2] = ct;
+    if (fabsf(theta) < 1e-6f) {
+        p[0] = 0.0f; p[1] = 0.0f; p[2] = length;
+    } else {
+        float radius = length / theta;
+        p[0] = radius * (1.0f - ct) * cp;
+        p[1] = radius * (1.0f - ct) * sp;
+        p[2] = radius * st;
+    }
+}
+
+static void _moment_to_tensions(int segment, const float moment_xy[2], float R,
+                                float tensions[SDM_WIRES_PER_SEG])
+{
+    float min_t = 1e30f;
+    float inv = 2.0f / (3.0f * fmaxf(R, 1e-6f));
+    for (int j = 0; j < SDM_WIRES_PER_SEG; j++) {
+        float alpha = s_wire_alpha[segment][j];
+        tensions[j] = inv * (-sinf(alpha) * moment_xy[0]
+                             + cosf(alpha) * moment_xy[1]);
+        if (tensions[j] < min_t) min_t = tensions[j];
+    }
+    float common = s_params.dynamics.tendon_pretension;
+    if (min_t < common) common -= min_t;
+    else common = 0.0f;
+    for (int j = 0; j < SDM_WIRES_PER_SEG; j++)
+        tensions[j] = _clampf(tensions[j] + common, 0.0f,
+                              s_params.force_peak_limit);
+}
+
+/** Section moment balance -> non-negative tendon target forces. */
 static void _dynamics_model(const float theta_actual[SDM_SEGMENTS],
                             const float phi_actual[SDM_SEGMENTS],
                             float R,
                             float f_target_out[SDM_WIRES])
 {
-    for (int i = 0; i < SDM_WIRES; i++) {
-        f_target_out[i] = 0.0f;
-    }
-
-    /* 尖端重量 (固定参数, 非自适应) */
-    float W_tip = s_params.tip_mass * s_params.gravity;
-
-    /* 总臂长: 从 CR 结构体读取, 不硬编码 */
-    float L_total = 0.0f;
-    for (int s = 0; s < SDM_SEGMENTS; s++) L_total += (float)CR.arm_params[s].L;
-    if (L_total < SDM_EPS) L_total = 0.45f;
-
-    /* 从基座安装姿态开始的累积旋转矩阵 R_acc */
+    float base_p[SDM_SEGMENTS][3] = {{0}};
+    float com_p[SDM_SEGMENTS][3] = {{0}};
+    float end_p[SDM_SEGMENTS][3] = {{0}};
+    float base_R[SDM_SEGMENTS][3][3];
     float R_acc[3][3];
+    float p_acc[3] = {0.0f, 0.0f, 0.0f};
     memcpy(R_acc, s_params.R_mount, sizeof(R_acc));
 
+    /* PCC geometry supplies r(s) and R(s) for the section load balance. */
     for (int s = 0; s < SDM_SEGMENTS; s++) {
-        float th = theta_actual[s];
-        float ph = phi_actual[s];
-        float L_seg = (float)CR.arm_params[s].L;  /* 从 CR 结构体读取 */
-        if (L_seg < SDM_EPS) L_seg = 0.225f;
-
-        /* PCC 本段局部旋转矩阵 R_local */
-        float cp = cosf(ph), sp = sinf(ph);
-        float ct = cosf(th), st = sinf(th);
-        float R_local[3][3] = {
-            { cp*cp*(ct-1)+1,  sp*cp*(ct-1),     cp*st },
-            { sp*cp*(ct-1),    cp*cp*(1-ct)+ct,   sp*st },
-            { -cp*st,          -sp*st,            ct     }
-        };
-
-        /* 重力投影到当前段的截面坐标系
-         * R_acc 此时反映从基座到本段之前的累积姿态
-         * 段0: R_acc=I (基座坐标系, 重力沿Z)
-         * 段1: R_acc=I×R_local_0 (包含段0弯曲后的姿态)
-         */
-        float g_lx = -W_tip * R_acc[2][0];
-        float g_ly = -W_tip * R_acc[2][1];
-
-        /* 力臂: 从当前段到尖端的距离 (从 CR 结构体读取) */
-        float L_arm = 0.0f;
-        for (int ss = s; ss < SDM_SEGMENTS; ss++) L_arm += (float)CR.arm_params[ss].L;
-        float moment_ratio = L_arm / L_total;
-
-        /* 弯曲刚度系数 */
-        float K = s_params.bending_stiffness * fabsf(th) / (L_seg * (R + SDM_EPS));
-
-        int wires[3] = { s_seg_to_wires[s][0], s_seg_to_wires[s][1], s_seg_to_wires[s][2] };
-
-        /* 先算每根丝的 |ΔL| 及总和，用于归一化 */
-        float abs_dL[3];
-        float sum_abs_dL = 0.0f;
-        for (int j = 0; j < 3; j++) {
-            abs_dL[j] = fabsf(-R * th * cosf(ph + s_wire_alpha[s][j]));
-            sum_abs_dL += abs_dL[j];
+        float L = (float)CR.arm_params[s].L;
+        if (L < SDM_EPS) L = 0.225f;
+        memcpy(base_R[s], R_acc, sizeof(R_acc));
+        memcpy(base_p[s], p_acc, sizeof(p_acc));
+        float p_mid_l[3], p_end_l[3], R_mid[3][3], R_local[3][3];
+        _pcc_pose(0.5f * theta_actual[s], phi_actual[s], 0.5f * L,
+                  p_mid_l, R_mid);
+        _pcc_pose(theta_actual[s], phi_actual[s], L, p_end_l, R_local);
+        float p_mid_w[3], p_end_w[3];
+        _mat3_vec(R_acc, p_mid_l, p_mid_w);
+        _mat3_vec(R_acc, p_end_l, p_end_w);
+        for (int k = 0; k < 3; k++) {
+            com_p[s][k] = p_acc[k] + p_mid_w[k];
+            end_p[s][k] = p_acc[k] + p_end_w[k];
+            p_acc[k] = end_p[s][k];
         }
-        if (sum_abs_dL < SDM_EPS) sum_abs_dL = SDM_EPS;
-
-        for (int j = 0; j < 3; j++) {
-            /* PCC 几何项 (归一化) */
-            float f_geom = K * abs_dL[j] / sum_abs_dL;
-
-            /* 重力补偿项 */
-            float g_proj = g_lx * cosf(s_wire_alpha[s][j]) + g_ly * sinf(s_wire_alpha[s][j]);
-            float f_grav = fabsf(g_proj) * moment_ratio;
-
-            f_target_out[wires[j]] = f_geom + f_grav;
-        }
-
-        /* 累积旋转: R_acc = R_acc × R_local
-         * 更新后供下一段使用，使下一段的重力投影包含本段的弯曲效果
-         */
         float R_new[3][3];
-        for (int r = 0; r < 3; r++)
-            for (int c = 0; c < 3; c++) {
-                R_new[r][c] = 0;
-                for (int k = 0; k < 3; k++)
-                    R_new[r][c] += R_acc[r][k] * R_local[k][c];
-            }
-        for (int r = 0; r < 3; r++)
-            for (int c = 0; c < 3; c++)
-                R_acc[r][c] = R_new[r][c];
+        _mat3_mul(R_acc, R_local, R_new);
+        memcpy(R_acc, R_new, sizeof(R_acc));
     }
+
+    /* Backward integration of section moments: distal loads affect all bases. */
+    float required[SDM_SEGMENTS][2] = {{0}};
+    for (int s = SDM_SEGMENTS - 1; s >= 0; s--) {
+        float Mg_world[3] = {0.0f, 0.0f, 0.0f};
+        for (int load = s; load < SDM_SEGMENTS; load++) {
+            float mass = fmaxf(s_params.dynamics.segment_mass[load], 0.0f);
+            float arm[3], force[3] = {0.0f, 0.0f, -mass * s_params.gravity};
+            float moment[3];
+            for (int k = 0; k < 3; k++) arm[k] = com_p[load][k] - base_p[s][k];
+            _cross3(arm, force, moment);
+            for (int k = 0; k < 3; k++) Mg_world[k] += moment[k];
+        }
+        if (s_params.tip_mass > 0.0f) {
+            float arm[3], force[3] = {0.0f, 0.0f,
+                                      -s_params.tip_mass * s_params.gravity};
+            float moment[3];
+            for (int k = 0; k < 3; k++)
+                arm[k] = end_p[SDM_SEGMENTS - 1][k] - base_p[s][k];
+            _cross3(arm, force, moment);
+            for (int k = 0; k < 3; k++) Mg_world[k] += moment[k];
+        }
+
+        float Mg_local[3];
+        _mat3_t_vec(base_R[s], Mg_world, Mg_local);
+        float L = (float)CR.arm_params[s].L;
+        if (L < SDM_EPS) L = 0.225f;
+        float kappa = fabsf(theta_actual[s]) / L;
+        /* Stable constitutive law from the derivation: EI(0) > 0. */
+        float EI = s_params.bending_stiffness * L
+                   + s_params.dynamics.curvature_stiffness * kappa * kappa;
+        EI = fmaxf(EI, SDM_EPS);
+        float Cb = EI * kappa;
+        float elastic_x = -Cb * sinf(phi_actual[s]);
+        float elastic_y =  Cb * cosf(phi_actual[s]);
+        required[s][0] = elastic_x - Mg_local[0];
+        required[s][1] = elastic_y - Mg_local[1];
+    }
+
+    float distal[3], proximal[3];
+    _moment_to_tensions(1, required[1], R, distal);
+    float proximal_residual[2] = {required[0][0], required[0][1]};
+    for (int j = 0; j < 3; j++) {
+        float alpha = s_wire_alpha[1][j];
+        proximal_residual[0] -= R * distal[j] * (-sinf(alpha));
+        proximal_residual[1] -= R * distal[j] * cosf(alpha);
+    }
+    _moment_to_tensions(0, proximal_residual, R, proximal);
+
+    float raw[SDM_WIRES] = {0};
+    for (int j = 0; j < 3; j++) {
+        raw[s_seg_to_wires[0][j]] = proximal[j];
+        raw[s_seg_to_wires[1][j]] = distal[j];
+    }
+    float omega = _clampf(s_params.dynamics.force_relaxation, 0.1f, 1.0f);
+    for (int i = 0; i < SDM_WIRES; i++) {
+        if (!s_force_target_valid) s_force_target[i] = raw[i];
+        else s_force_target[i] += omega * (raw[i] - s_force_target[i]);
+        f_target_out[i] = s_force_target[i];
+    }
+    s_force_target_valid = true;
 }
 
 /* ==================== k_ratio 计算 (内部) ==================== */
@@ -333,6 +411,7 @@ void sdm_init(float bending_stiffness,
     s_params.force_recovery    = force_recovery;
     s_params.tip_mass          = tip_mass;
     s_params.gravity           = 9.81f;
+    sdm_configure_dynamics(NULL);
 
     /* 构建初始安装姿态矩阵 */
     if (mount_dir) {
@@ -343,8 +422,34 @@ void sdm_init(float bending_stiffness,
         _build_mount_matrix(default_dir, s_params.R_mount);
     }
 
-    for (int i = 0; i < SDM_WIRES; i++) s_k_ratio[i] = 1.0f;
+    for (int i = 0; i < SDM_WIRES; i++) {
+        s_k_ratio[i] = 1.0f;
+        s_force_target[i] = 0.0f;
+    }
+    s_force_target_valid = false;
     s_initialized = true;
+}
+
+void sdm_configure_dynamics(const SDM_DynamicsConfig *config)
+{
+    if (config == NULL) {
+        for (int s = 0; s < SDM_SEGMENTS; s++)
+            s_params.dynamics.segment_mass[s] = 0.0f;
+        s_params.dynamics.curvature_stiffness = 0.0f;
+        s_params.dynamics.tendon_pretension = 0.0f;
+        s_params.dynamics.force_relaxation = 0.3f;
+    } else {
+        for (int s = 0; s < SDM_SEGMENTS; s++)
+            s_params.dynamics.segment_mass[s] =
+                fmaxf(config->segment_mass[s], 0.0f);
+        s_params.dynamics.curvature_stiffness =
+            fmaxf(config->curvature_stiffness, 0.0f);
+        s_params.dynamics.tendon_pretension =
+            fmaxf(config->tendon_pretension, 0.0f);
+        s_params.dynamics.force_relaxation =
+            _clampf(config->force_relaxation, 0.1f, 1.0f);
+    }
+    s_force_target_valid = false;
 }
 
 float sdm_get_force_peak_limit(void) { return s_params.force_peak_limit; }

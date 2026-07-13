@@ -24,6 +24,9 @@
 /* 帧头定义 */
 #define FRAME_HEAD_MOTOR      0xAA    /* 电机指令帧头 */
 #define FRAME_HEAD_SENSOR     0xBB    /* 传感器指令帧头 */
+#define PC_CMD_PI             3.14159265358979323846f
+#define SDM_SEG1_MAX_DEG      90.0f
+#define SDM_SEG2_MAX_DEG      60.0f
 
 /* 电机功能码定义 */
 typedef enum
@@ -34,7 +37,7 @@ typedef enum
 	FUNC_MOTOR_SINGLE   = 0x03,   /* 单电机控制：addr + direction + distance */
 	FUNC_MOTOR_SYNC     = 0x04,   /* 多电机同步：count + start_addr + distances... */
 	FUNC_MOTOR_KINEMATIC= 0x05,   /* 基于运动学的协同控制（无数据段） */
-	FUNC_MOTOR_CUSTOM   = 0x06,   /* 自定义多电机控制：count + [addr, direction, distance]... */
+	FUNC_MOTOR_CUSTOM   = 0x06,   /* 自定义控制：count + [addr, direction, value_H, value_L]... */
 } MotorFuncCode_t;
 
 /* 传感器功能码定义 */
@@ -75,6 +78,42 @@ static void pc_cmd_parser_reset(void) {
     s_ctrlIdx = 0;
     // 增加：清理缓冲区
     memset(s_ctrlBuf, 0, CTRL_BUF_SIZE);
+}
+
+/**
+ * @brief Execute a bend command through the SDM force/dynamics controller.
+ *
+ * direction: 0=up, 1=down, 2=right, 3=left.
+ * angle_deg: non-negative bend angle in degrees.
+ */
+static bool pc_cmd_execute_sdm_bend(uint8_t segment,
+                                    uint8_t direction,
+                                    float angle_deg)
+{
+    if (segment < 1 || segment > SDM_SEGMENTS || direction > 3)
+        return false;
+
+    float max_angle = (segment == 1) ? SDM_SEG1_MAX_DEG : SDM_SEG2_MAX_DEG;
+    if (angle_deg < 0.0f || angle_deg > max_angle)
+        return false;
+
+    float phi;
+    switch (direction) {
+        case 0: phi = 0.0f;                    break; /* up */
+        case 1: phi = PC_CMD_PI;               break; /* down */
+        case 2: phi = 0.5f * PC_CMD_PI;        break; /* right */
+        case 3: phi = 1.5f * PC_CMD_PI;        break; /* left */
+        default: return false;
+    }
+
+    int index = (int)segment - 1;
+    CR.joint_space.target_theta[index] = angle_deg * PC_CMD_PI / 180.0f;
+    CR.joint_space.target_phi[index] = phi;
+
+    /* Reads tendon forces and encoder feedback, then calls sdm_step(). */
+    cr_kinematic_step();
+    motor_sync_control(SDM_WIRES, 0, CR.joint_space.deltaL);
+    return true;
 }
 
 /**
@@ -123,6 +162,7 @@ static void pc_cmd_parse_and_execute(void)
                         uint16_t distance = (s_ctrlBuf[5] << 8) | s_ctrlBuf[6]; // 距离
                         uint16_t vel = (s_ctrlBuf[7] << 8) | s_ctrlBuf[8]; // 速度
                     	uint16_t acc = (s_ctrlBuf[9] << 8) | s_ctrlBuf[10]; // 加速度
+						(void)acc; /* 当前电机单点接口尚未接收加速度参数 */
 						// 调用单电机控制函数
                         motor_single_control(addr - 1, direction, (float)distance / 100.0f, (float)vel / 100.0f);
                     }
@@ -159,21 +199,23 @@ static void pc_cmd_parse_and_execute(void)
                         if (count == 0x02 && data_len == 2) {
                             // 压力闭环控制指令
                             CR_pressure_control();
-                        } else if (data_len >= (1 + count * 3)) {
+                        } else if (data_len >= (1 + count * 4)) {
                             // 检查是否是特殊指令
                             if (count == 1) {
                                 uint8_t addr = s_ctrlBuf[4];
-                                if (addr == 0xFE) {
-                                    // 喷管弯曲指令: 地址=0xFE, 方向, 角度
+                                if (addr == 0xFE || addr == 0xFD) {
+                                    /* SDM 弯曲指令:
+                                     * 0xFE=第1段, 0xFD=第2段;
+                                     * direction: 0=上, 1=下, 2=右, 3=左;
+                                     * angle: 0.01 degree/LSB.
+                                     */
                                     uint8_t direction = s_ctrlBuf[5];
                                     uint16_t angle = (s_ctrlBuf[6] << 8) | s_ctrlBuf[7];
-									double val = (double)angle / 100;
-                                    // 调用喷管弯曲控制函数
-                                	char dir = direction == 0? 'u': 'd';
-                                	armBend(1, dir, val);
-
-                                } else if (addr == 0xFD) {
-                                    // 保留以备后续扩展
+									float angle_deg = (float)angle / 100.0f;
+                                    uint8_t segment = (addr == 0xFE) ? 1U : 2U;
+                                    (void)pc_cmd_execute_sdm_bend(segment,
+                                                                    direction,
+                                                                    angle_deg);
                                 }
                             }
                         }

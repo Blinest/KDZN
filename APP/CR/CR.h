@@ -49,6 +49,8 @@ typedef struct ContinuumRobot
 } ContinuumRobot;
 
 void CR_init(void);
+/** Execute one SDM step using current force/position feedback. */
+void cr_kinematic_step(void);
 uint8_t armBend(int seg, char direction, double val);
 uint8_t armBend_edit(int seg, char direction, double val, double g_u, double g_r, double g_d, double g_l, double seg1_limit, double seg2_limit);
 void deltaL_update(void);

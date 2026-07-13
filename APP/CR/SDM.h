@@ -31,6 +31,20 @@ extern "C" {
 #define SDM_WIRES_PER_SEG   3
 #endif
 
+/**
+ * @brief SDM quasi-static dynamics parameters.
+ *
+ * The constitutive law used by the model is
+ *   EI(kappa) = K0 * L_segment + a2 * kappa^2,
+ * where K0 is the zero-curvature angular stiffness passed to sdm_init().
+ */
+typedef struct {
+    float segment_mass[SDM_SEGMENTS]; /**< Lumped mass at each segment midpoint (kg). */
+    float curvature_stiffness;        /**< Nonlinear coefficient a2 (N*m^4). */
+    float tendon_pretension;          /**< Minimum common tendon pretension (N). */
+    float force_relaxation;           /**< Target-force relaxation, range [0.1, 1]. */
+} SDM_DynamicsConfig;
+
 /* ==================== 对外 API ==================== */
 
 /**
@@ -48,6 +62,13 @@ void sdm_init(float bending_stiffness,
               float force_recovery,
               float tip_mass,
               const float mount_dir[3]);
+
+/**
+ * @brief Configure the distributed-mass and nonlinear constitutive model.
+ * @note Passing NULL restores the safe defaults (zero segment mass, linear
+ *       stiffness, zero pretension and a relaxation factor of 0.3).
+ */
+void sdm_configure_dynamics(const SDM_DynamicsConfig *config);
 
 /**
  * @brief 一步 SDM 完整控制。

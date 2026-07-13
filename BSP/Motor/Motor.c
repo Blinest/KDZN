@@ -9,16 +9,17 @@
  * @author blin
  */
 #include "Motor.h"
-
 #include "math.h"
-#ifndef M_PI
-#define M_PI 3.14159265358979323846f
-#endif
 #include <stdio.h>
 #include "usart.h"
 #include "cmsis_os2.h"
 #include "fdcan.h"
 #include "X_V2.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846f
+#endif
+
 
 // 创建电机与电机反馈数据结构体
 MotorFeedback motor_feedback[MOTOR_NUM];
