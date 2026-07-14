@@ -15,6 +15,7 @@
 #include "SDM.h"
 #include "CR.h"
 #include "Motor/Motor.h"
+#include "usart.h"
 #include <math.h>
 #include <string.h>
 
