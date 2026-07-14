@@ -42,18 +42,18 @@ void StartDefaultTask(void *argument)
     }
 
     /* 2. 臂体归中（无论是否读到位置，都发送归零指令） */
-    auto_straight();
+    //auto_straight();
     osDelay(1000);
 
     /* 3. 传感器归零（去皮） */
-    sensor_reset();
+    //sensor_reset();
     osDelay(300);
 
     /* 4. 压力灵敏度自动标定 */
-    CR_calibrate_pressure_sensitivity();
+   // CR_calibrate_pressure_sensitivity();
 
     /* 5. 传感器置零*/
-    sensor_reset();
+    //sensor_reset();
     osDelay(300);
 
     /* 初始化完成，后续循环保持最低 CPU 占用 */

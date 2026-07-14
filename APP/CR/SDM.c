@@ -115,28 +115,16 @@ static void _build_mount_matrix(const float dir[3], float R[3][3])
 }
 
 /* ==================== PCC 逆运动学 (内部) ==================== */
-static void _calculate_L_m(float R, const float theta[SDM_SEGMENTS],
-                           const float phi[SDM_SEGMENTS], float deltaL[SDM_WIRES])
-{
-    deltaL[0] = -R * theta[0] * cosf(phi[0]);
-    deltaL[2] = -R * theta[0] * cosf(phi[0] + SDM_2PI_3);
-    deltaL[4] = -R * theta[0] * cosf(phi[0] + SDM_4PI_3);
-
-    deltaL[1] = -R * theta[0] * cosf(phi[0] + SDM_PI_3)
-                + R * theta[1] * cosf(phi[1] + SDM_PI_3);
-    deltaL[3] = -R * theta[0] * cosf(phi[0] + SDM_PI)
-                - R * theta[1] * cosf(phi[1] + SDM_PI);
-    deltaL[5] = -R * theta[0] * cosf(phi[0] + SDM_5PI_3)
-                - R * theta[1] * cosf(phi[1] + SDM_5PI_3);
-}
 
 static void _calculate_L(float R, const float theta[SDM_SEGMENTS],
                          const float phi[SDM_SEGMENTS], float deltaL[SDM_WIRES])
 {
-    _calculate_L_m(R, theta, phi, deltaL);
-    for (int i = 0; i < SDM_WIRES; i++) {
-        deltaL[i] *= SDM_M_TO_MM;
-    }
+    deltaL[0] = -R * theta[0] * cosf(phi[0]);
+    deltaL[2] = -R * theta[0] * cosf(phi[0] + SDM_2PI_3);
+    deltaL[4] = -R * theta[0] * cosf(phi[0] + SDM_4PI_3);
+    deltaL[1] = -R * theta[0] * cosf(phi[0] + SDM_PI_3) + R * theta[1] * cosf(phi[1] + SDM_PI_3);
+    deltaL[3] = -R * theta[0] * cosf(phi[0] + SDM_PI) + R * theta[1] * cosf(phi[1] + SDM_PI_3);
+    deltaL[5] = -R * theta[0] * cosf(phi[0] + SDM_5PI_3) + R * theta[1] * cosf(phi[1] + SDM_5PI_3);
 }
 
 /* ==================== PCC 正解反推 (内部) ==================== */
@@ -191,7 +179,7 @@ static void _inverse_kinematics(const float deltaL_actual[SDM_WIRES],
     float s0_contribution_5 = -R * theta_out[0] * cosf(phi_out[0] + SDM_5PI_3);
 
     /* 段1 独立贡献 (注意丝3,5 的公式里段1项是负号) */
-    float d0 = (deltaL_m[1] - s0_contribution_1) / R;   /* θ₁ cos(φ₁ + π/3) */
+    float d0 = -(deltaL_m[1] - s0_contribution_1) / R;   /* θ₁ cos(φ₁ + π/3) */
     float d1 = -(deltaL_m[3] - s0_contribution_3) / R;  /* θ₁ cos(φ₁ + π) */
     float d2 = -(deltaL_m[5] - s0_contribution_5) / R;  /* θ₁ cos(φ₁ + 5π/3) */
 
@@ -611,21 +599,15 @@ void sdm_kinematic_step(const float forces[SENSOR_NUM],
         for (int i = 0; i < SDM_WIRES; i++) deltaL_out[i] = 0.0f;
         return;
     }
-
+    /*
     float theta_safe[SDM_SEGMENTS], phi_safe[SDM_SEGMENTS];
     for (int s = 0; s < SDM_SEGMENTS; s++) {
         theta_safe[s] = theta_desired[s] * safety;
         phi_safe[s]   = phi_desired[s];
     }
-
+    */
     /* 2. 纯 PCC 逆运动学 → 直接输出（无动力学 / k_ratio 修正） */
-    _calculate_L(R, theta_safe, phi_safe, deltaL_out);
-
-    /* NaN/Inf 保护 */
-    for (int i = 0; i < SDM_WIRES; i++) {
-        if (isnan(deltaL_out[i]) || isinf(deltaL_out[i]))
-            deltaL_out[i] = 0.0f;
-    }
+    _calculate_L(R, theta_desired, phi_desired, deltaL_out);
 
     /* 3. 直接驱动电机 */
     motor_sync_control(SDM_WIRES, 0, deltaL_out);

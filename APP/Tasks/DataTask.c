@@ -52,7 +52,7 @@ void StartDataTask(void *argument)
         // ====================================
 
         // 每200ms读取一次电机状态（位置、速度）
-        if ((current_time - last_motor_check_time) >= 200)
+        if ((current_time - last_motor_check_time) >= 400)
         {
             motor_status_check();
             last_motor_check_time = current_time;
@@ -96,7 +96,7 @@ void StartDataTask(void *argument)
         // ====================================
 
         // 每200ms发送一次数据到队列 SensorMessageQueue
-        if ((current_time - last_send_time) >= 100)
+        if ((current_time - last_send_time) >= 300)
         {
             // 打包系统状态数据 (使用 static 以节省堆栈空间)
             static uint8_t packed_frame[DATA_BUF_SIZE];

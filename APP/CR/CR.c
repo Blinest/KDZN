@@ -54,12 +54,7 @@ void CR_init(void)
 // 用于控制臂体弯曲
 uint8_t armBend(int seg, char direction, double val)
 {
-    if (seg == 1) {
-        CR.joint_space.target_theta[0] = direction == 1 ? (float)val : -(float)val;
-    } else {
-        CR.joint_space.target_theta[1] = direction == 1 ? (float)val : -(float)val;
-    }
-    return armBend_edit(seg, direction, val, 0, 0, 0, 0, 90.0, 60.0);
+    return armBend_edit(seg, direction, val, 0, 0, 0, 0, 90.0, 120.0);
 }
 
 /** @brief 从 global_sensor 提取 6 路肌腱力 (N) */
@@ -109,13 +104,11 @@ void cr_kinematic_step(void)
     // 设置力安全阈值
     float forces[SENSOR_NUM];
     cr_get_tendon_forces(forces);
-
-    float R = CR.drive_radius_mm / 1000.0f;
     // 调用底层运动学模型
     sdm_kinematic_step(forces,
                        CR.joint_space.target_theta,
                        CR.joint_space.target_phi,
-                       R,
+                       CR.drive_radius_mm,
                        CR.joint_space.deltaL);
 }
 
@@ -261,7 +254,7 @@ uint8_t armBend_edit(int seg, char direction, double val, double g_u, double g_r
 
     // 检查补偿后的角度是否超出安全范围
     double compensated_deg = compensated_angle_rad * 180.0 / pi;
-    double max_angle = (seg == 1) ? 120.0 : 60.0;  // 允许一定的超调，目前第一段臂体可以超调到120°左右
+    double max_angle = (seg == 1) ? seg1_limit : seg2_limit;
     if (compensated_deg > max_angle) {
         compensated_angle_rad = max_angle * pi / 180.0;
     }

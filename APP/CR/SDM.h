@@ -55,6 +55,8 @@ void sdm_kinematic_step(const float forces[SENSOR_NUM],
                          const float phi_desired[SDM_SEGMENTS],
                          float R,
                          float deltaL_out[SDM_WIRES]);
+static void _calculate_L(float R, const float theta[SDM_SEGMENTS],
+                         const float phi[SDM_SEGMENTS], float deltaL[SDM_WIRES]);
 
 /**
  * @brief Configure the distributed-mass and nonlinear constitutive model.
