@@ -90,7 +90,7 @@ static bool pc_cmd_execute_sdm_bend(uint8_t segment,
                                     uint8_t direction,
                                     float angle_deg)
 {
-    if (segment < 1 || segment > SDM_SEGMENTS || direction > 3)
+    if (segment < 1 || segment > SEGMENT_COUNT || direction > 3)
         return false;
 
     float max_angle = (segment == 1) ? SDM_SEG1_MAX_DEG : SDM_SEG2_MAX_DEG;
@@ -110,9 +110,8 @@ static bool pc_cmd_execute_sdm_bend(uint8_t segment,
     CR.joint_space.target_theta[index] = angle_deg * PC_CMD_PI / 180.0f;
     CR.joint_space.target_phi[index] = phi;
 
-    /* Reads tendon forces and encoder feedback, then calls sdm_step(). */
+    /* cr_kinematic_step 内部已包含 PCC 解算 + 电机驱动 */
     cr_kinematic_step();
-    motor_sync_control(SDM_WIRES, 0, CR.joint_space.deltaL);
     return true;
 }
 
@@ -154,18 +153,11 @@ static void pc_cmd_parse_and_execute(void)
             		break;
 
                 case FUNC_MOTOR_SINGLE:
-                    // 单电机控制: 地址 + 方向 + 距离 + 速度 + 加速度 (1 + 2 + 2 + 2)
-                    if (data_len >= 8) {
+                    // [临时测试] 水平弯曲与垂直弯曲测试
 
-                        uint8_t addr = s_ctrlBuf[3];      // 电机地址
-                        uint8_t direction = s_ctrlBuf[4]; // 方向 (1:负方向, 0:正方向)
-                        uint16_t distance = (s_ctrlBuf[5] << 8) | s_ctrlBuf[6]; // 距离
-                        uint16_t vel = (s_ctrlBuf[7] << 8) | s_ctrlBuf[8]; // 速度
-                    	uint16_t acc = (s_ctrlBuf[9] << 8) | s_ctrlBuf[10]; // 加速度
-						(void)acc; /* 当前电机单点接口尚未接收加速度参数 */
-						// 调用单电机控制函数
-                        motor_single_control(addr - 1, direction, (float)distance / 100.0f, (float)vel / 100.0f);
-                    }
+                    // direction: 0=上(垂直), 1=下(垂直), 2=右(水平), 3=左(水平)
+                    // angle: 0.01°/LSB, 16位大端
+                        armBend(0, 'u', 90); // 90度弯曲测试
                     break;
 
                 case FUNC_MOTOR_SYNC:
@@ -213,6 +205,8 @@ static void pc_cmd_parse_and_execute(void)
                                     uint16_t angle = (s_ctrlBuf[6] << 8) | s_ctrlBuf[7];
 									float angle_deg = (float)angle / 100.0f;
                                     uint8_t segment = (addr == 0xFE) ? 1U : 2U;
+                                    // 临时测试: 对第 segment 段执行垂直/水平弯曲
+                                    // direction: 0=上(垂直), 1=下(垂直), 2=右(水平), 3=左(水平)
                                     (void)pc_cmd_execute_sdm_bend(segment,
                                                                     direction,
                                                                     angle_deg);

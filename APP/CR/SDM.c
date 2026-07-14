@@ -14,6 +14,7 @@
 
 #include "SDM.h"
 #include "CR.h"
+#include "Motor/Motor.h"
 #include <math.h>
 #include <string.h>
 
@@ -52,7 +53,19 @@ static const int s_seg_to_wires[SDM_SEGMENTS][SDM_WIRES_PER_SEG] = {
     { 1, 3, 5 }    /* 段1: 丝1, 丝3, 丝5 */
 };
 
-/* ==================== 内部工具 ==================== */
+/**
+ * @brief 将浮点数限制在指定范围内（钳位函数）
+ *
+ * 如果输入值 v 小于下限 lo，则返回 lo；
+ * 如果 v 大于上限 hi，则返回 hi；
+ * 否则返回 v 本身。
+ * 常用于防止数值溢出、越界或保证输出在有效区间内。
+ *
+ * @param v  输入值（待钳位的浮点数）
+ * @param lo 下限（最小值）
+ * @param hi 上限（最大值）
+ * @return   钳位后的浮点数，范围 [lo, hi]
+ */
 static inline float _clampf(float v, float lo, float hi) {
     return (v < lo) ? lo : (v > hi) ? hi : v;
 }
@@ -188,14 +201,30 @@ static void _inverse_kinematics(const float deltaL_actual[SDM_WIRES],
 }
 
 /* ==================== 力安全因子 (内部) ==================== */
+/**
+ * @brief 力安全监控函数
+ * 遍历所有传感器通道，找出最大力值，据此计算安全系数并判断是否过载。
+ *
+ * @param forces     输入：传感器力值数组
+ * @param safety     输出：计算得到的安全系数，取值范围被钳制在
+ *                   [s_params.force_recovery, 1.0] 之间。
+ *                   1.0 表示完全安全，越接近 force_recovery 表示
+ *                   力值越接近峰值限制，需要降低驱动输出。
+ * @param over_peak  输出：过载标志。当任一通道力值达到或超过
+ *                   s_params.force_peak_limit 时置为 true，
+ *                   否则为 false。
+ */
 static void _force_safety(const float forces[SENSOR_NUM],
                            float *safety, bool *over_peak)
 {
     float f_max = 0.0f;
+    // 最大力值获取
     for (int i = 0; i < SENSOR_NUM; i++) {
         if (forces[i] > f_max) f_max = forces[i];
     }
+    // 过载标志
     *over_peak = (f_max >= s_params.force_peak_limit);
+    // 安全系数解算
     *safety = _clampf(1.0f - f_max / s_params.force_peak_limit,
                       s_params.force_recovery, 1.0f);
 }
@@ -400,6 +429,16 @@ static void _compute_k_ratio(const float forces[SENSOR_NUM],
 
 /* ==================== 对外 API ==================== */
 
+/**
+ * @brief 初始化 SDM 模块。
+ * @param bending_stiffness  弯曲刚度 (N·m/rad)
+ * @param force_peak_limit   力峰值上限 (N)
+ * @param force_recovery     恢复阈值 [0~1]
+ * @param tip_mass           尖端质量 (kg), 用于重力补偿
+ * @param mount_dir          臂体初始方向 (世界坐标系, 单位向量, [3])
+ *                           水平安装传 [1,0,0] 或 [0,1,0]，竖直传 [0,0,1]
+ *                           NULL 则默认竖直向上
+ */
 void sdm_init(float bending_stiffness,
               float force_peak_limit,
               float force_recovery,
@@ -452,8 +491,30 @@ void sdm_configure_dynamics(const SDM_DynamicsConfig *config)
     s_force_target_valid = false;
 }
 
+/**
+ * @brief 获取力峰值上限 (N)
+ */
 float sdm_get_force_peak_limit(void) { return s_params.force_peak_limit; }
 
+/**
+ * @brief 一步 SDM 完整控制。
+ *
+ * 内部流程:
+ *   1. 力安全 → theta_safe = theta_desired × safety
+ *   2. PCC 逆运动学 → 基准丝长 ΔL_base
+ *   3. 从 deltaL_actual 反解真实臂体几何 (θ_actual, φ_actual)
+ *   4. 动力学模型基于真实几何计算每根丝目标拉力
+ *   5. k_ratio = f(F_real, F_target, ΔL_base)
+ *   6. ΔL_out[i] = ΔL_base[i] × k_ratio[i]
+ *
+ * @param forces         实时 6 路肌腱力 (N)
+ * @param theta_desired  各段期望弯曲角 (rad, [2])
+ * @param phi_desired    各段期望弯曲方向角 (rad, [2])
+ * @param deltaL_actual  实际 6 根丝位移反馈 (mm), NULL 则用期望值近似
+ * @param K_force        力控增益 (建议 0.01~0.1)
+ * @param R              驱动丝半径 (m)
+ * @param deltaL_out     输出: 6 根丝最终位移量 (mm)
+ */
 void sdm_step(const float forces[SENSOR_NUM],
               const float theta_desired[SDM_SEGMENTS],
               const float phi_desired[SDM_SEGMENTS],
@@ -509,4 +570,69 @@ void sdm_step(const float forces[SENSOR_NUM],
         if (isnan(deltaL_out[i]) || isinf(deltaL_out[i]))
             deltaL_out[i] = 0.0f;
     }
+
+    /* 6. 直接驱动电机 */
+    motor_sync_control(SDM_WIRES, 0, deltaL_out);
+}
+
+/**
+ * @brief 纯运动学步进 — PCC 逆运动学 + 力安全 + 电机驱动（无动力学模型、无 k_ratio）
+ *
+ * 内部流程:
+ *   1. 力安全阈值解算 → theta_safe = theta_desired × safety
+ *   2. PCC 逆运动学 → deltaL_out
+ *   3. 驱动电机
+ *
+ * @param forces         实时 6 路肌腱力 (N)，用于力安全
+ * @param theta_desired  各段期望弯曲角 (rad, [2])
+ * @param phi_desired    各段期望弯曲方向角 (rad, [2])
+ * @param R              驱动丝半径 (m)
+ * @param deltaL_out     输出: 6 根丝最终位移量 (mm)
+ */
+void sdm_kinematic_step(const float forces[SENSOR_NUM],
+                         const float theta_desired[SDM_SEGMENTS],
+                         const float phi_desired[SDM_SEGMENTS],
+                         float R,
+                         float deltaL_out[SDM_WIRES])
+{
+    if (!s_initialized || theta_desired == NULL ||
+        phi_desired == NULL || deltaL_out == NULL) {
+        return;
+    }
+
+    /* 1. 力安全阈值解算 */
+    float safety;
+    bool  over_peak;
+    _force_safety(forces, &safety, &over_peak);
+
+    /* 力超限：硬停止 */
+    if (over_peak) {
+        for (int i = 0; i < SDM_WIRES; i++) deltaL_out[i] = 0.0f;
+        return;
+    }
+
+    float theta_safe[SDM_SEGMENTS], phi_safe[SDM_SEGMENTS];
+    for (int s = 0; s < SDM_SEGMENTS; s++) {
+        theta_safe[s] = theta_desired[s] * safety;
+        phi_safe[s]   = phi_desired[s];
+    }
+
+    /* 2. 纯 PCC 逆运动学 → 直接输出（无动力学 / k_ratio 修正） */
+    _calculate_L(R, theta_safe, phi_safe, deltaL_out);
+
+    /* NaN/Inf 保护 */
+    for (int i = 0; i < SDM_WIRES; i++) {
+        if (isnan(deltaL_out[i]) || isinf(deltaL_out[i]))
+            deltaL_out[i] = 0.0f;
+    }
+
+    /* 3. 直接驱动电机 */
+    motor_sync_control(SDM_WIRES, 0, deltaL_out);
+}
+
+void sdm_auto_straight(void)
+{
+    float zero[SDM_WIRES] = {0};
+    motor_sync_control(SDM_WIRES, 0, zero);
+    HAL_Delay(500);
 }

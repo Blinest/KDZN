@@ -1,13 +1,12 @@
-/**
- *上层控制实现，用于处理上层指令解析和执行，提供电机控制和传感器数据读取等功能
- *功能包括：
- *1. 电机控制：基于运动学的电机控制
- *2. 传感器数据读取
- *3. 指令解析：解析上层指令，执行相应的操作，如控制电机、读取传感器数据等
- *4. 样机控制：根据指令控制样机的运动，如弯曲等
- *5. 错误处理：处理指令解析错误、通信错误等情况，确保系统稳定运行
- */
-
+/**********************************************************
+***	编写作者：blinest
+***	qq：1071378062
+*
+* brief 上层控制实现
+* 功能包括：
+* 1.基于运动学模型的电机控制，主要用于系统运动
+* 2.传感器数据读取，主要用于环境感知
+**********************************************************/
 #include "CR.h"
 #include "usart.h"
 #include "Motor/Motor.h"
@@ -18,19 +17,10 @@
 #include "SDM.h"
 #include "cmsis_os2.h"
 
-
 #define pi 3.1415926535
 
-/*
- 臂体补偿器
-*/
+/* 臂体补偿器 */
 bool tendon_comp = true;
-
-/**********************************************************
-***	编写作者：blinest
-
-***	qq：1071378062
-**********************************************************/
 
 ContinuumRobot CR;
 
@@ -39,14 +29,14 @@ float sdm_K_force = 0.05f;
 
 void CR_init(void)
 {
-    /* SDM 初始化: 半径 30mm, 刚度 0.2 N·m/rad, 力峰值 100N, 恢复 0.3, 尖端质量 0.15kg
+    /* SDM 初始化: 半径 12mm, 刚度 0.2 N·m/rad, 力峰值 100N, 恢复 0.3, 尖端质量 0.02kg
      * 臂体水平安装，沿X轴方向 */
-    CR.arm_params[0].L = 0.225;
-    CR.arm_params[1].L = 0.225;
+    CR.arm_params[0].L = 0.200;
+    CR.arm_params[1].L = 0.200;
     float mount_dir[3] = { 1.0f, 0.0f, 0.0f };  /* 水平沿X轴 */
-    sdm_init(0.2f, 100.0f, 0.3f, 0.15f, mount_dir);
+    sdm_init(0.2f, 1000.0f, 0.3f, 0.02f, mount_dir);
 
-    CR.operation_space.scale = 20;
+    // CR.operation_space.scale = 20;
     CR.joint_space.target_theta[0] = 0.5f;
     CR.joint_space.target_theta[1] = 0.3f;
     CR.joint_space.target_phi[0]   = 0.0f;
@@ -61,7 +51,7 @@ void CR_init(void)
     //CR_calibrate_pressure_sensitivity();
 }
 
-// 用于控制喷管弯曲
+// 用于控制臂体弯曲
 uint8_t armBend(int seg, char direction, double val)
 {
     if (seg == 1) {
@@ -81,24 +71,19 @@ void cr_get_tendon_forces(float forces[SENSOR_NUM])
 }
 
 /** @brief 执行一步运动学 + 力控计算, 结果写入 CR.joint_space.deltaL */
-void cr_kinematic_step(void)
+/**
+ * @brief SDM 完整步进 — 含动力学力控模型
+ *
+ * 内部流程: 读取力/编码器反馈 → sdm_step（力安全、PCC逆运动学、
+ *           动力学k_ratio修正、电机驱动）
+ */
+void cr_dynamics_step(void)
 {
     float forces[SENSOR_NUM];
     cr_get_tendon_forces(forces);
 
-    /* 力安全前置检查：任意一路超限则跳过本次运动 */
-    float force_limit = sdm_get_force_peak_limit();
-    for (int i = 0; i < SENSOR_NUM; i++) {
-        if (forces[i] >= force_limit) {
-            for (int j = 0; j < SDM_WIRES; j++)
-                CR.joint_space.deltaL[j] = 0.0f;
-            return;
-        }
-    }
-
-    /* 从电机编码器读取实际位移反馈 */
-    float deltaL_actual[SDM_WIRES];
-    for (int i = 0; i < SDM_WIRES; i++) {
+    float deltaL_actual[WIRE_COUNT];
+    for (int i = 0; i < WIRE_COUNT; i++) {
         deltaL_actual[i] = global_motor[i].stepper_motor.current_pos;
     }
 
@@ -111,26 +96,38 @@ void cr_kinematic_step(void)
              sdm_K_force,
              R,
              CR.joint_space.deltaL);
+}
 
-    /* NaN/Inf 保护 */
-    for (int i = 0; i < SDM_WIRES; i++) {
-        if (isnan(CR.joint_space.deltaL[i]) || isinf(CR.joint_space.deltaL[i]))
-            CR.joint_space.deltaL[i] = 0.0f;
-    }
+/**
+ * @brief 纯运动学步进 — PCC逆运动学 + 力安全 + 电机驱动
+ *
+ * 内部流程: 读取力传感器 → sdm_kinematic_step（力安全、PCC逆运动学、电机驱动）
+ *           无动力学模型、无k_ratio修正、无编码器反馈需求
+ */
+void cr_kinematic_step(void)
+{
+    // 设置力安全阈值
+    float forces[SENSOR_NUM];
+    cr_get_tendon_forces(forces);
+
+    float R = CR.drive_radius_mm / 1000.0f;
+    // 调用底层运动学模型
+    sdm_kinematic_step(forces,
+                       CR.joint_space.target_theta,
+                       CR.joint_space.target_phi,
+                       R,
+                       CR.joint_space.deltaL);
 }
 
 void auto_straight(void)
 {
-    for (int i = 0; i < SDM_SEGMENTS; i++) {
+    for (int i = 0; i < SEGMENT_COUNT; i++) {
         CR.joint_space.target_theta[i] = 0;
         CR.joint_space.target_phi[i]   = 0;
     }
     CR.operation_space.scale = 0;
 
-    /* 直接发绝对位置 0 给所有电机，不走 SDM 模型（SDM 在 theta=0 时输出为 0） */
-    float zero_targets[SDM_WIRES] = {0};
-    motor_sync_control(SDM_WIRES, 0, zero_targets);
-    HAL_Delay(500); // 半双工通信，确保臂体完全归中后再次发送数据
+    sdm_auto_straight();
 }
 
 /**
@@ -152,7 +149,6 @@ void armRotate(float theta_deg, float step_deg)
     CR.joint_space.target_phi[0]   = 0;
     CR.joint_space.target_phi[1]   = 0;
     cr_kinematic_step();
-    motor_sync_control(SDM_WIRES, 0, CR.joint_space.deltaL);
     osDelay(4000);
 
     // 2. 逐步旋转 phi
@@ -161,7 +157,6 @@ void armRotate(float theta_deg, float step_deg)
         CR.joint_space.target_phi[0] = phi_deg * pi / 180.0f;
         CR.joint_space.target_phi[1] = phi_deg * pi / 180.0f;
         cr_kinematic_step();
-        motor_sync_control(SDM_WIRES, 0, CR.joint_space.deltaL);
         osDelay(1000);
     }
 
@@ -179,45 +174,14 @@ void armRotate(float theta_deg, float step_deg)
  */
 void action_group_demo(void)
 {
-    const float angle = 30.0f;  // 弯曲角度（度）
-
-    // 1. 360度旋转（保持30度弯曲）
-    armRotate(30.0f, 30.0f);
-
-    // 2. 向上弯曲
-    armBend(1, 'u', angle);
-    osDelay(3000);
-
-    // 3. 回零
-    auto_straight();
-    osDelay(2000);
-
-    // 4. 向下弯曲
-    armBend(1, 'd', angle);
-    osDelay(3000);
-
-    // 5. 回零
-    auto_straight();
-    osDelay(2000);
-
-    // 6. 向左弯曲
-    armBend(1, 'l', angle);
-    osDelay(3000);
-
-    // 7. 回零
-    auto_straight();
-    osDelay(2000);
-
-    // 8. 向右弯曲
-    armBend(1, 'r', angle);
-    osDelay(3000);
-
-    // 9. 回零
-    auto_straight();
-    osDelay(2000);
+    //TODO: 上弯 → 回零 → 下弯 → 回零 → 左弯 → 回零 → 右弯 → 回零
 }
 
-
+/**
+ * @brief 索引值获取
+ *
+ * urdl, 0,1,2,3，顺时针分配
+ */
 int direction_to_index(char direction) {
     switch(direction) {
         case 'u': return 0;
@@ -261,8 +225,6 @@ double tendonCompensation(int seg, char direction, double angle_deg)
         // 向下弯曲，重力辅助，可以减少补偿
         gravity_factor = 1.0 - 0.03 * (1.0 - cos(angle_rad));
     }
-
-
     double theta_compensated = theta_ideal * dir_gain * geometric_factor * gravity_factor;
 
     double max_ratio = 1.3;
@@ -325,52 +287,44 @@ uint8_t armBend_edit(int seg, char direction, double val, double g_u, double g_r
     }
     cr_kinematic_step();
 
-    // 校验 + 驱动步进电机
-    for (int i = 0; i < SDM_WIRES; i++) {
-        if (isnan(CR.joint_space.deltaL[i]) || isinf(CR.joint_space.deltaL[i]))
-            CR.joint_space.deltaL[i] = 0.0f;
-    }
-    motor_sync_control(SDM_WIRES, 0, CR.joint_space.deltaL);
     return 0;
 }
 
 /* ==================== 通用运动学入口 ==================== */
-
 void CR_kinematic_control(void (*calc)(float R, const float theta[], float phi, float deltaL[]),
                            float R, const float theta[], const float phi[])
 {
-    float deltaL[SDM_WIRES] = {0};
+    float deltaL[WIRE_COUNT] = {0};
 
     /* 调用运动学计算丝长 */
     calc(R, theta, phi[0], deltaL);
 
     /* NaN/Inf 保护 */
-    for (int i = 0; i < SDM_WIRES; i++) {
+    for (int i = 0; i < WIRE_COUNT; i++) {
         if (isnan(deltaL[i]) || isinf(deltaL[i]))
             deltaL[i] = 0.0f;
     }
 
     /* 同步驱动电机 */
-    motor_sync_control(SDM_WIRES, 0, deltaL);
+    motor_sync_control(WIRE_COUNT, 0, deltaL);
 }
 
 /* ==================== 压力闭环控制（PID同步模式） ==================== */
 
-#define PRESS_HIGH       100      /**< 压力上限 */
-#define PRESS_LOW        -100     /**< 压力下限 */
-#define PRESS_DELTA      8        /**< 最小力值变化阈值 */
-
-/* PID 参数 */
-#define PID_KP           0.01f    /**< 比例增益 */
-#define PID_KI           0.0f     /**< 积分增益（先关掉） */
-#define PID_KD           0.0f     /**< 微分增益（先关掉） */
-#define PID_ILIMIT       50.0f    /**< 积分项限幅 */
-#define PID_OUTPUT_MAX   0.5f     /**< 单次最大输出 (mm) */
-
-/* 压力灵敏度标定参数 */
-#define CALIB_STEP       1.0f     /**< 标定步长 (mm) */
-#define CALIB_SETTLE_MS  1000      /**< 标定稳定等待 (ms) */
-#define CALIB_THRESH     3        /**< 最小有效变化量，低于此视为传感器无响应 */
+/** 默认压力控制参数 */
+const CR_PressureConfig s_press_cfg = {
+    .high            = 100,
+    .low             = -100,
+    .delta           = 8,
+    .kp              = 0.01f,
+    .ki              = 0.0f,
+    .kd              = 0.0f,
+    .i_limit         = 50.0f,
+    .output_max      = 0.5f,
+    .calib_step      = 1.0f,
+    .calib_settle_ms = 1000,
+    .calib_thresh    = 3.0f,
+};
 
 /* 每通道 PID 状态 */
 typedef struct {
@@ -407,7 +361,7 @@ void CR_pressure_restore(const float *target, const int32_t *prev_val)
 /**
  * @brief 压力灵敏度自动标定
  *
- * 原理：每个电机独立前/后移动 CALIB_STEP mm，记录压力变化峰峰值，
+ * 原理：每个电机独立前/后移动 s_press_cfg.calib_step mm，记录压力变化峰峰值，
  *       计算缩放系数 sensitivity_scale[i] = 基准幅值 / 实测幅值，
  *       使各通道对同量 PID 输出产生一致的压力变化。
  *
@@ -425,15 +379,15 @@ void CR_calibrate_pressure_sensitivity(void)
         motor_pos0[i] = global_motor[i].stepper_motor.current_pos;
     }
 
-    /* 2. 统一前进 CALIB_STEP mm（压力增大方向） */
+    /* 2. 统一前进 s_press_cfg.calib_step mm（压力增大方向） */
     {
         float targets[MOTOR_NUM];
         for (int i = 0; i < MOTOR_NUM; i++) {
-            targets[i] = motor_pos0[i] + CALIB_STEP;
+            targets[i] = motor_pos0[i] + s_press_cfg.calib_step;
         }
         motor_sync_control(MOTOR_NUM, 0, targets);
     }
-    osDelay(CALIB_SETTLE_MS);
+    osDelay(s_press_cfg.calib_settle_ms);
     /* 等待 DataTask 读取到最新的传感器数据 */
     osDelay(1000);
     /* 主动触发一轮传感器解析，确保 fwd 读到最新值 */
@@ -451,12 +405,12 @@ void CR_calibrate_pressure_sensitivity(void)
     {
         float targets[MOTOR_NUM];
         for (int i = 0; i < MOTOR_NUM; i++) {
-            targets[i] = motor_pos0[i] - CALIB_STEP;
+            targets[i] = motor_pos0[i] - s_press_cfg.calib_step;
         }
         motor_sync_control(MOTOR_NUM, 0, targets);
     }
 
-    osDelay(CALIB_SETTLE_MS);
+    osDelay(s_press_cfg.calib_settle_ms);
     /* 等待 DataTask 读取到最新的传感器数据 */
     osDelay(1000);
 
@@ -482,7 +436,7 @@ void CR_calibrate_pressure_sensitivity(void)
         bool have_valid = false;
 
         for (int i = 0; i < SENSOR_NUM; i++) {
-            if (amp[i] >= CALIB_THRESH) {
+            if (amp[i] >= s_press_cfg.calib_thresh) {
                 if (!have_valid) {
                     amp_min = amp[i];
                     have_valid = true;
@@ -494,7 +448,7 @@ void CR_calibrate_pressure_sensitivity(void)
 
         if (have_valid) {
             for (int i = 0; i < SENSOR_NUM; i++) {
-                if (amp[i] >= CALIB_THRESH)
+                if (amp[i] >= s_press_cfg.calib_thresh)
                     global_sensor[i].press_sensor.sensitivity_scale = amp_min / amp[i];
                 else
                     global_sensor[i].press_sensor.sensitivity_scale = 1.0f;
@@ -514,7 +468,7 @@ void CR_calibrate_pressure_sensitivity(void)
         }
         motor_sync_control(MOTOR_NUM, 0, targets);
     }
-    osDelay(CALIB_SETTLE_MS);
+    osDelay(s_press_cfg.calib_settle_ms);
 
     /* 7. 主动触发一轮传感器读取，让新 sensitivity_scale 生效 */
     for (int i = 0; i < SENSOR_NUM; i++) {
@@ -528,7 +482,7 @@ void CR_calibrate_pressure_sensitivity(void)
  * @brief PID 压力闭环控制 — 同步模式
  *
  * 对每个超限通道计算 PID 输出，一次指令内所有触发通道同步驱动。
- * 偏差 = 当前值 - 目标边界（PRESS_HIGH 或 PRESS_LOW）
+ * 偏差 = 当前值 - 目标边界（s_press_cfg.high 或 s_press_cfg.low）
  * 输出方向：力值偏大 → 回退电机，力值偏小 → 前进电机
  */
 void CR_pressure_control(void)
@@ -557,22 +511,22 @@ void CR_pressure_control(void)
 
         /* 计算偏差：超出上限或下限的差值（带符号） */
         int32_t err = 0;
-        if (raw_val > PRESS_HIGH)
-            err = PRESS_HIGH - raw_val;    /* 负值，需要回退 */
-        else if (raw_val < PRESS_LOW)
-            err = PRESS_LOW - raw_val;     /* 正值，需要前进 */
+        if (raw_val > s_press_cfg.high)
+            err = s_press_cfg.high - raw_val;    /* 负值，需要回退 */
+        else if (raw_val < s_press_cfg.low)
+            err = s_press_cfg.low - raw_val;     /* 正值，需要前进 */
         else
             continue;  /* 在范围内，不触发该通道 */
 
         int32_t delta = raw_val - s_press_prev_val[i];
         if (delta < 0) delta = -delta;
 
-        if (delta >= PRESS_DELTA) {
+        if (delta >= s_press_cfg.delta) {
             /* PID 计算 */
             float err_f = (float)err;
 
             /* P 项（val 已由 sensitivity_scale 归一化，直接使用） */
-            float p_out = PID_KP * err_f;
+            float p_out = s_press_cfg.kp * err_f;
 
             /* I 项：偏差积分，带限幅 */
             if (s_pid[i].initialized) {
@@ -581,15 +535,15 @@ void CR_pressure_control(void)
                 s_pid[i].integral = 0.0f;
                 s_pid[i].initialized = true;
             }
-            if (s_pid[i].integral > PID_ILIMIT)  s_pid[i].integral = PID_ILIMIT;
-            if (s_pid[i].integral < -PID_ILIMIT) s_pid[i].integral = -PID_ILIMIT;
-            float i_out = PID_KI * s_pid[i].integral;
+            if (s_pid[i].integral > s_press_cfg.i_limit)  s_pid[i].integral = s_press_cfg.i_limit;
+            if (s_pid[i].integral < -s_press_cfg.i_limit) s_pid[i].integral = -s_press_cfg.i_limit;
+            float i_out = s_press_cfg.ki * s_pid[i].integral;
 
             /* D 项 */
             float d_out = 0.0f;
             if (s_pid[i].initialized) {
                 float derr = err_f - s_pid[i].prev_err;
-                d_out = PID_KD * derr;
+                d_out = s_press_cfg.kd * derr;
             }
             s_pid[i].prev_err = err_f;
 
@@ -597,8 +551,8 @@ void CR_pressure_control(void)
             float output = p_out + i_out + d_out;
 
             /* 输出限幅 */
-            if (output > PID_OUTPUT_MAX)  output = PID_OUTPUT_MAX;
-            if (output < -PID_OUTPUT_MAX) output = -PID_OUTPUT_MAX;
+            if (output > s_press_cfg.output_max)  output = s_press_cfg.output_max;
+            if (output < -s_press_cfg.output_max) output = -s_press_cfg.output_max;
 
             s_press_target[i] += output;
 
