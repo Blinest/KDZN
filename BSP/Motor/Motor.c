@@ -103,52 +103,71 @@ void motor_single_control(uint8_t idx, uint8_t direction, float distance, float 
 }
 
 // ==================== 多电机同步位置控制 ====================
-
-void motor_sync_control(uint8_t count, uint8_t start_idx, float distance[])
+void motor_sync_control(uint8_t count, uint8_t start_idx, float target_positions[])
 {
-    float max_distance = 0;
-    uint16_t speed[MOTOR_NUM];
-
-    for (int i = start_idx; i < count; i++)
-    {
-        float abs_distance = fabsf(distance[i]);
-        max_distance = fmax(max_distance, abs_distance);
+    if (count == 0 || start_idx + count > MOTOR_NUM) {
+        return;
     }
 
-    for (int i = start_idx; i < start_idx + count; i++)
+    float max_remaining = 0;
+    float speed_float[MOTOR_NUM] = {0};
+    float remaining[MOTOR_NUM] = {0};
+
+    // 1. 计算每个电机的剩余距离（目标位置 - 当前位置）
+    for (int j = 0; j < count; j++)
     {
-        float abs_distance = fabsf(distance[i - start_idx]);
-        float ratio = (max_distance > 0) ? (abs_distance / max_distance) : 0;
+        int i = start_idx + j;
+        float current_pos = global_motor[i].stepper_motor.current_pos;  // 读取当前位置
+        float target_pos = target_positions[j];
+        remaining[i] = fabsf(target_pos - current_pos);  // ✅ 剩余距离
+        max_remaining = fmax(max_remaining, remaining[i]);
+    }
+
+    // 2. 如果所有电机已在目标位置，跳过
+    if (max_remaining < 0.001f) {
+        return;
+    }
+
+    // 3. 按剩余距离比例分配速度
+    float min_speed = 0.5f;   // 最小速度 mm/s
+    float max_speed = 200.0f; // 最大速度 mm/s
+
+    for (int j = 0; j < count; j++)
+    {
+        int i = start_idx + j;
+        float ratio = remaining[i] / max_remaining;  // 剩余越多，速度越快
+
+        // 获取最大速度（RPM → mm/s）
         float vel_max = global_motor[i].vel_max / 60.0f * global_motor[i].stepper_motor.daocheng;
         float calculated_speed = ratio * vel_max;
-        speed[i] = (calculated_speed == 0) ? (uint16_t)vel_max : (uint16_t)calculated_speed;
-        global_motor[i].target_pos = distance[i - start_idx];
-        global_motor[i].stepper_motor.target_vel = speed[i];
+
+        // 最小速度保护（避免速度被截断为 0）
+        if (calculated_speed > 0 && calculated_speed < min_speed) {
+            calculated_speed = min_speed;
+        }
+        if (calculated_speed > max_speed) {
+            calculated_speed = max_speed;
+        }
+
+        speed_float[i] = calculated_speed;
+        global_motor[i].target_pos = target_positions[j];  // 保存绝对目标位置
+        global_motor[i].stepper_motor.target_vel = speed_float[i];
     }
 
-    for (int i = start_idx; i < start_idx + count; i++)
+    // 4. 发送命令（传入绝对目标位置）
+    for (int j = 0; j < count; j++)
     {
-        motor_run(i, global_motor[i].stepper_motor.target_vel, global_motor[i].target_pos, true);
-
-        /* 等待 TX FIFO 有空间（开启 AutoRetransmission 后由硬件保证送达） */
-        uint32_t wait = 50000;
-        while (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) < 3 && wait-- > 0) {
-            for (volatile int d = 0; d < 48; d++);
+        int i = start_idx + j;
+        if (remaining[i] < 0.001f) {
+            continue;  // 已经在目标位置，跳过
         }
-        if (wait == 0) {
-            /* TX FIFO 满，忙等一帧时间（500kbps 下约 200μs/帧） */
-            for (volatile int d = 0; d < 24000; d++);
-            while (HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) < 3) {
-                for (volatile int d = 0; d < 4800; d++);
-            }
-        }
-        for (volatile int d = 0; d < 24000; d++);  // ~50us 帧间隔
+        motor_run(i, speed_float[i], target_positions[j], true);  // ✅ 传入绝对位置
+        HAL_Delay(2);
     }
 
     X_V2_Synchronous_motion(0);
-    HAL_Delay(500);  // 等待同步运动完成
+    HAL_Delay(50);
 }
-
 // ==================== 选择性多电机同步控制 ====================
 
 void motor_sync_selective_control(uint8_t count, const uint8_t idx[], const float distance[])

@@ -43,7 +43,7 @@ typedef struct ContinuumRobot
 {
     JointSpace joint_space;
     OperationSpace operation_space;
-    float drive_radius_mm;   /**< 驱动丝半径 (mm) */
+    float drive_radius_mm;   /**< 驱动丝与中心杆的距离 (mm) */
     ArmParams arm_params[2];
     bool state;
 } ContinuumRobot;

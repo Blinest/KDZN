@@ -114,17 +114,20 @@ static void _build_mount_matrix(const float dir[3], float R[3][3])
     R[2][0] = x[2]; R[2][1] = y[2]; R[2][2] = z[2];
 }
 
-/* ==================== PCC 逆运动学 (内部) ==================== */
+/* ==================== PCC 模型 (内部) ==================== */
 
 static void _calculate_L(float R, const float theta[SDM_SEGMENTS],
                          const float phi[SDM_SEGMENTS], float deltaL[SDM_WIRES])
 {
-    deltaL[0] = -R * theta[0] * cosf(phi[0]);
-    deltaL[2] = -R * theta[0] * cosf(phi[0] + SDM_2PI_3);
-    deltaL[4] = -R * theta[0] * cosf(phi[0] + SDM_4PI_3);
-    deltaL[1] = -R * theta[0] * cosf(phi[0] + SDM_PI_3) + R * theta[1] * cosf(phi[1] + SDM_PI_3);
-    deltaL[3] = -R * theta[0] * cosf(phi[0] + SDM_PI) + R * theta[1] * cosf(phi[1] + SDM_PI_3);
-    deltaL[5] = -R * theta[0] * cosf(phi[0] + SDM_5PI_3) + R * theta[1] * cosf(phi[1] + SDM_5PI_3);
+
+    deltaL[3] = -R * theta[0] * cosf(phi[0]);
+    deltaL[1] = -R * theta[0] * cosf(phi[0] + SDM_2PI_3);
+    deltaL[5] = -R * theta[0] * cosf(phi[0] + SDM_4PI_3);
+
+    deltaL[2] = -R * theta[0] * cosf(phi[0] + SDM_PI_3) - R * theta[1] * cosf(phi[1] + SDM_PI_3) - 0.5;
+
+    deltaL[0] = -R * theta[0] * cosf(phi[0] + SDM_PI) - R * theta[1] * cosf(phi[1] + SDM_PI) - 0.5;
+    deltaL[4] = -R * theta[0] * cosf(phi[0] + SDM_5PI_3) - R * theta[1] * cosf(phi[1] + SDM_5PI_3);
 }
 
 /* ==================== PCC 正解反推 (内部) ==================== */
@@ -568,7 +571,7 @@ void sdm_step(const float forces[SENSOR_NUM],
  * @brief 纯运动学步进 — PCC 逆运动学 + 力安全 + 电机驱动（无动力学模型、无 k_ratio）
  *
  * 内部流程:
- *   1. 力安全阈值解算 → theta_safe = theta_desired × safety
+ *   1. 力安全阈值判定，如果超限，直接去驱动丝位移数组直接清零退出
  *   2. PCC 逆运动学 → deltaL_out
  *   3. 驱动电机
  *
@@ -584,6 +587,7 @@ void sdm_kinematic_step(const float forces[SENSOR_NUM],
                          float R,
                          float deltaL_out[SDM_WIRES])
 {
+    /** 无效值判断 */
     if (!s_initialized || theta_desired == NULL ||
         phi_desired == NULL || deltaL_out == NULL) {
         return;
@@ -594,7 +598,7 @@ void sdm_kinematic_step(const float forces[SENSOR_NUM],
     bool  over_peak;
     _force_safety(forces, &safety, &over_peak);
 
-    /* 力超限：硬停止 */
+    /* 力超限：强制停止，同时将所有的驱动丝复位 */
     if (over_peak) {
         for (int i = 0; i < SDM_WIRES; i++) deltaL_out[i] = 0.0f;
         return;
@@ -609,13 +613,5 @@ void sdm_kinematic_step(const float forces[SENSOR_NUM],
     /* 2. 纯 PCC 逆运动学 → 直接输出（无动力学 / k_ratio 修正） */
     _calculate_L(R, theta_desired, phi_desired, deltaL_out);
 
-    /* 3. 直接驱动电机 */
-    motor_sync_control(SDM_WIRES, 0, deltaL_out);
-}
 
-void sdm_auto_straight(void)
-{
-    float zero[SDM_WIRES] = {0};
-    motor_sync_control(SDM_WIRES, 0, zero);
-    HAL_Delay(500);
 }

@@ -37,8 +37,8 @@ void CR_init(void)
     sdm_init(0.2f, 1000.0f, 0.3f, 0.02f, mount_dir);
 
     // CR.operation_space.scale = 20;
-    CR.joint_space.target_theta[0] = 0.5f;
-    CR.joint_space.target_theta[1] = 0.3f;
+    CR.joint_space.target_theta[0] = 0.0f;
+    CR.joint_space.target_theta[1] = 0.0f;
     CR.joint_space.target_phi[0]   = 0.0f;
     CR.joint_space.target_phi[1]   = 0.0f;
 
@@ -51,7 +51,11 @@ void CR_init(void)
     //CR_calibrate_pressure_sensitivity();
 }
 
-// 用于控制臂体弯曲
+/**
+ * @brief 用于控制臂体弯曲
+ *
+ * 内部流程: 直接调用底层的补偿模型，用于前馈补偿控制
+ */
 uint8_t armBend(int seg, char direction, double val)
 {
     return armBend_edit(seg, direction, val, 0, 0, 0, 0, 90.0, 120.0);
@@ -63,6 +67,27 @@ void cr_get_tendon_forces(float forces[SENSOR_NUM])
     for (int i = 0; i < SENSOR_NUM; i++) {
         forces[i] = global_sensor[i].press_sensor.val;
     }
+}
+
+/**
+ * @brief 纯运动学步进
+ *
+ * 内部流程: 读取力传感器 → sdm_kinematic_step（力安全、PCC逆运动学、电机驱动）
+ *           无动力学模型、无k_ratio修正、无编码器反馈需求
+ */
+void cr_kinematic_step(void)
+{
+    // 设置力安全阈值
+    float forces[SENSOR_NUM];
+    cr_get_tendon_forces(forces);
+    // 调用底层运动学模型
+    sdm_kinematic_step(forces,
+                       CR.joint_space.target_theta,
+                       CR.joint_space.target_phi,
+                       CR.drive_radius_mm,
+                       CR.joint_space.deltaL);
+    // 驱动底层电机运动
+    motor_sync_control(SDM_WIRES, 0, CR.joint_space.deltaL);
 }
 
 /** @brief 执行一步运动学 + 力控计算, 结果写入 CR.joint_space.deltaL */
@@ -93,24 +118,7 @@ void cr_dynamics_step(void)
              CR.joint_space.deltaL);
 }
 
-/**
- * @brief 纯运动学步进 — PCC逆运动学 + 力安全 + 电机驱动
- *
- * 内部流程: 读取力传感器 → sdm_kinematic_step（力安全、PCC逆运动学、电机驱动）
- *           无动力学模型、无k_ratio修正、无编码器反馈需求
- */
-void cr_kinematic_step(void)
-{
-    // 设置力安全阈值
-    float forces[SENSOR_NUM];
-    cr_get_tendon_forces(forces);
-    // 调用底层运动学模型
-    sdm_kinematic_step(forces,
-                       CR.joint_space.target_theta,
-                       CR.joint_space.target_phi,
-                       CR.drive_radius_mm,
-                       CR.joint_space.deltaL);
-}
+
 
 void auto_straight(void)
 {
@@ -119,8 +127,9 @@ void auto_straight(void)
         CR.joint_space.target_phi[i]   = 0;
     }
     CR.operation_space.scale = 0;
-
-    sdm_auto_straight();
+    memset(CR.joint_space.deltaL, 0,sizeof(CR.joint_space.deltaL));
+    // 驱动底层电机运动
+    motor_sync_control(SDM_WIRES, 0, CR.joint_space.deltaL);
 }
 
 /**
@@ -242,9 +251,9 @@ uint8_t armBend_edit(int seg, char direction, double val, double g_u, double g_r
     if(seg != 1 && seg != 2) return 1;
     if (seg == 1 && (val > seg1_limit || val < 0)) return 1;
     if (seg == 2 && (val > seg2_limit || val < 0)) return 1;
-    float val_rad = val * pi / 180.0;
 
     // 使用肌腱补偿器
+    float val_rad = val * pi / 180.0;
     float compensated_angle_rad = 0;
     if(tendon_comp) {
        compensated_angle_rad = tendonCompensation(seg, direction, val);
@@ -254,7 +263,7 @@ uint8_t armBend_edit(int seg, char direction, double val, double g_u, double g_r
 
     // 检查补偿后的角度是否超出安全范围
     double compensated_deg = compensated_angle_rad * 180.0 / pi;
-    double max_angle = (seg == 1) ? seg1_limit : seg2_limit;
+    double max_angle = (seg == 1) ? seg1_limit * 1.5 : seg2_limit * 1.5;
     if (compensated_deg > max_angle) {
         compensated_angle_rad = max_angle * pi / 180.0;
     }

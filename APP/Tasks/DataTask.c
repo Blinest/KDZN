@@ -52,14 +52,14 @@ void StartDataTask(void *argument)
         // ====================================
 
         // 每200ms读取一次电机状态（位置、速度）
-        if ((current_time - last_motor_check_time) >= 400)
+        if ((current_time - last_motor_check_time) >= 1000)
         {
             motor_status_check();
             last_motor_check_time = current_time;
         }
 
         // 每100ms读取一次传感器数据
-        if ((current_time - last_sensor_read_time) >= 200)
+        if ((current_time - last_sensor_read_time) >= 500)
         {
             // 读取6个压力传感器（地址1-6）
             sensor_multi_read();

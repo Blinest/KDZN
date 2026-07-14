@@ -188,7 +188,7 @@ static void pc_cmd_parse_and_execute(void)
                 case FUNC_MOTOR_KINEMATIC:
                     // 动作组触发指令: [AA] [05] [校验和]，无额外数据
                     // 所有动作参数在 action_group_demo 内部定义
-                    armBend(1,'d',80);
+                    armBend(1,'u',80);
                     break;
                 case FUNC_MOTOR_CUSTOM:
                     // 自定义多电机控制: 数量 + [地址, 方向, 距离]...
