@@ -45,3 +45,7 @@ $RECYCLE.BIN/
 # ---- 本地调试脚本产物 ----
 *.log
 serial_dump_*.txt
+
+# ---- Python ----
+__pycache__/
+*.pyc
