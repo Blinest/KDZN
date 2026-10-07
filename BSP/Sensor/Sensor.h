@@ -28,9 +28,8 @@
  */
 typedef struct
 {
-	float x;  /**< X轴数据 */
-	float y;  /**< Y轴数据 */
-	float z;  /**< Z轴数据 */
+	float x;  /**< 滤波+通道平衡后的张力 (N), 供控制/感知使用 */
+	float y;  /**< 原始张力 (N), 供诊断对比 */
 } GlobalSensor;
 
 /**

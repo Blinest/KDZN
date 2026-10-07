@@ -146,7 +146,7 @@ class Parser:
 
 
 def decode_status(d: bytes):
-    if len(d) != 85:
+    if len(d) != 73:
         return None
     motors = []
     for i in range(6):
@@ -154,11 +154,11 @@ def decode_status(d: bytes):
         motors.append((pos / 100, vel / 100, acc / 100, st))
     sensors = []
     for i in range(6):
-        x, y, z = struct.unpack_from(">hhh", d, 44 + i * 6)
-        sensors.append((x / 100, y / 100, z / 100))
-    scale, armbend = struct.unpack_from(">hh", d, 80)
+        x, y = struct.unpack_from(">hh", d, 44 + i * 4)
+        sensors.append((x / 100, y / 100))
+    scale, armbend = struct.unpack_from(">hh", d, 68)
     return dict(motors=motors, sensors=sensors,
-                scale=scale / 100, armbend=armbend / 100, state=d[84])
+                scale=scale / 100, armbend=armbend / 100, state=d[72])
 
 
 def decode_percept(d: bytes):
@@ -309,7 +309,7 @@ def step4_status(ctx, frames):
     print("      序号   位置(mm)    速度(mm/s)   state    force(N)    raw(N)")
     for i in range(6):
         pos, vel, acc, st = ok_frame["motors"][i]
-        fx, fy, fz = ok_frame["sensors"][i]
+        fx, fy = ok_frame["sensors"][i]
         print(f"        {i + 1}   {pos:9.3f}  {vel:9.3f}      {st:3d}   {fx:9.3f}  {fy:9.3f}")
     print(f"      scale={ok_frame['scale']}  armbend={ok_frame['armbend']}  state={ok_frame['state']}")
     ctx.report(True, "状态帧解析", "6 路电机 + 6 路传感器字段齐全")

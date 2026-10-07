@@ -36,7 +36,6 @@ void sensor_init(void)
     for (int i = 0; i < SENSOR_NUM; i++) {
         global_sensor[i].x = 0.0f;
         global_sensor[i].y = 0.0f;
-        global_sensor[i].z = 0.0f;
     }
 
     // 2. 初始化 CMCU-06 传感器硬件

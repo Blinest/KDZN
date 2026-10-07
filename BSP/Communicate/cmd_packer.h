@@ -53,12 +53,22 @@ extern "C" {
 	} FrameData;
 
 	/**
-	 * @brief 打包系统状态帧 (test_frame 格式)
-	 * @param frame 存储打包后的数据缓冲区
-	 * @param motor_pos 电机位置数组 [MOTOR_NUM][3]
-	 * @param sensor_angle 传感器角度数组 [SENSOR_NUM][3]
-	 * @param scale 缩放比例
-	 * @param state 系统状态
+	 * @brief 打包系统状态帧
+	 *
+	 * 数据段 73 字节, 总帧长 78 字节 (V2: 0x55 + DEV + FUNC + LEN + DATA + SUM)。
+	 *   V2: [0x55][DEV_DRIVE=0x01][FUNC=0x00][73][数据段][SUM]
+	 *
+	 * 数据段布局 (大端):
+	 *   [0]     电机数量 (6)
+	 *   [1]     传感器数量 (6)
+	 *   [2-43]  6×电机, 每路 7 B: pos(2) vel(2) acc(2) state(1), ×0.01 mm / mm·s⁻¹ / mm·s⁻²
+	 *   [44-67] 6×传感器, 每路 4 B: x(2) y(2), ×0.01 N
+	 *           x = 滤波+通道平衡后张力; y = 原始值
+	 *   [68-69] scale   int16 ×100
+	 *   [70-71] armbend int16 ×100
+	 *   [72]    state   uint8
+	 *
+	 * @param frame 输出缓冲区 (≥78 字节)
 	 * @return 打包后的总长度
 	 */
 	uint16_t cmd_packer_pack_status_frame(uint8_t* frame, GlobalMotor motor_pos[MOTOR_NUM], GlobalSensor sensor_angle[SENSOR_NUM], const ContinuumRobot *lqts, uint8_t state);

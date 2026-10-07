@@ -26,7 +26,7 @@ extern osMessageQueueId_t SensorDataQueueHandle;
 
 /* ==================== 数据段构造 (与帧头无关) ==================== */
 
-/** 系统状态数据段: 85 字节 */
+/** 系统状态数据段: 73 字节 */
 static uint16_t _payload_status(uint8_t *p,
                                 GlobalMotor motor[MOTOR_NUM],
                                 GlobalSensor sensor[SENSOR_NUM],
@@ -48,15 +48,13 @@ static uint16_t _payload_status(uint8_t *p,
         p[i++] = (uint8_t)motor[k].state;
     }
 
-    /* 传感器数据: x/y/z 各 int16 (×0.01 N) → 每路 6 字节
-     * x = 滤波+通道平衡后张力; y = 原始值; z 保留 */
+    /* 传感器数据: x/y 各 int16 (×0.01 N) → 每路 4 字节
+     * x = 滤波+通道平衡后张力; y = 原始值 (z 已取消) */
     for (int k = 0; k < SENSOR_NUM; k++) {
         int16_t x = (int16_t)(sensor[k].x * 100);
         int16_t y = (int16_t)(sensor[k].y * 100);
-        int16_t z = (int16_t)(sensor[k].z * 100);
         p[i++] = (uint8_t)(((uint16_t)x >> 8) & 0xFF); p[i++] = (uint8_t)(x & 0xFF);
         p[i++] = (uint8_t)(((uint16_t)y >> 8) & 0xFF); p[i++] = (uint8_t)(y & 0xFF);
-        p[i++] = (uint8_t)(((uint16_t)z >> 8) & 0xFF); p[i++] = (uint8_t)(z & 0xFF);
     }
 
     int16_t scale   = (int16_t)(cr->operation_space.scale * 100);
