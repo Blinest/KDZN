@@ -1,0 +1,47 @@
+# ============================================================
+#  TDCRControl (.gitignore)
+# ============================================================
+
+# ---- 构建产物 ----
+/build/
+*.o
+*.d
+*.elf
+*.map
+*.hex
+*.bin
+*.list
+*.su
+
+# ---- IDE / 编辑器 ----
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+*~
+
+# ---- STM32CubeMX 自动备份 ----
+_backup_*.zip
+_backup_*.ioc
+
+# ---- 体量大且构建不需要的 CMSIS 资源 ----
+# DSP/Lib 是 IAR/GCC/ARM 的预编译静态库(约 164MB), 本工程用不上:
+# 构建的 include / source 清单里完全没有引用 Drivers/CMSIS/DSP。
+# 如后续需要启用 CMSIS-DSP, 保留 DSP/Source 即可走源码编译。
+Drivers/CMSIS/DSP/Lib/
+Drivers/CMSIS/DSP/Examples/
+Drivers/CMSIS/DSP/DSP_Lib_TestSuite/
+Drivers/CMSIS/NN/Examples/
+Drivers/CMSIS/NN/NN_Lib_Tests/
+Drivers/CMSIS/NN/UnitTests/
+
+# ---- Windows ----
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---- 本地调试脚本产物 ----
+*.log
+serial_dump_*.txt
