@@ -275,7 +275,13 @@ void motor_kinematic_control (Kinematic kinematic, float R[], float theta[], flo
 	}
 
 	// ==================== 执行同步控制 ====================
-	motor_sync_control(9, MOTOR_ID, deltaL);
+	/* 注意: motor_sync_control 的第 2 个参数是 global_motor[] 的数组索引(0 基),
+	 * 不是电机地址; 这里必须是 (MOTOR_NUM, 0)。
+	 * [修正 2026-10-15] 原为 (9, MOTOR_ID, deltaL):
+	 *   - count=9 超范围(会被裁剪);
+	 *   - start_idx=MOTOR_ID 在 MOTOR_ID=6 时 >= MOTOR_NUM, 函数直接 return,
+	 *     运动学控制完全失效。 */
+	motor_sync_control(MOTOR_NUM, 0, deltaL);
 }
 
 /**
