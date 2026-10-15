@@ -65,6 +65,7 @@ static void _h_motor_disable(void)
         motor_enable(global_motor[i].id, false);
         osDelay(1);
     }
+    CR.state = 0;
 }
 
 static void _h_motor_enable(void)
@@ -73,6 +74,7 @@ static void _h_motor_enable(void)
         motor_enable(global_motor[i].id, true);
         osDelay(1);
     }
+    CR.state = 1;
 }
 
 /**
@@ -186,7 +188,7 @@ static void _h_handshake(const uint8_t *d, uint8_t len)
     uint8_t ack[16];
     const uint16_t n = cmd_packer_pack_handshake_ack(ack);
     if (n > 0 && n <= (uint16_t)sizeof(ack)) {
-        Usart_SendString(&huart2, ack, n);
+        Usart_SendString(&huart1, ack, n);      /* 上位机链路 = USART1 */
     }
 }
 

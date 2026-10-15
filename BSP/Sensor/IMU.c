@@ -1,7 +1,7 @@
 //
 // Created by blin on 2026/3/7.
 //
-// 用于IMU数据读取与处理，通过串口1实现读取
+// 用于IMU数据读取与处理，通过串口2实现读取
 #include "Sensor/IMU.h"
 #include "Sensor/WT_IMU.h"
 #include <string.h>
@@ -22,7 +22,7 @@ void IMU_Init(void)
 
 void IMU_single_read(uint8_t sensor_id)
 {
-	// 使用串口1完成数据读取
+	// 使用串口2完成数据读取
 	uint16_t reg_start = 0x3D;   // Roll 寄存器地址（需根据实际模块调整）
 	uint16_t reg_count = 3;      // 连续读取 3 个寄存器
 
@@ -31,7 +31,7 @@ void IMU_single_read(uint8_t sensor_id)
 
 static void SensorUartSend(uint8_t *p_data, uint32_t uiSize)
 {
-	Usart_SendString(&huart1, p_data, uiSize);
+	Usart_SendString(&huart2, p_data, uiSize);
 }
 
 

@@ -18,7 +18,7 @@
 /**
  * @brief 单条 Modbus-RTU 响应等待超时 (ms)
  *
- * 6 个 CMCU-06 共用 USART1 @9600bps，8 字节请求 + 9 字节响应单次往返约 20ms，
+ * 6 个 CMCU-06 共用 USART2 @9600bps，8 字节请求 + 9 字节响应单次往返约 20ms，
  * 取 30ms 作为"未响应则跳过该地址"的上限。
  */
 #define SENSOR_RESP_TIMEOUT_MS  30
@@ -46,7 +46,7 @@ void sensor_single_read(uint8_t sensor_id);
 /**
  * @brief 多传感器数据读取函数
  *
- * 6 个 CMCU-06 共用 USART1(Modbus-RTU) 总线, 必须串行轮询:
+ * 6 个 CMCU-06 共用 USART2(Modbus-RTU) 总线, 必须串行轮询:
  *   发一条请求 -> 等本地址响应到达(或超时) -> 再发下一条,
  * 否则多个从机会同时应答造成总线碰撞。
  *

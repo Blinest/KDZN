@@ -17,7 +17,6 @@
 
 #include "cmd_packer.h"
 #include "CR/CR.h"
-#include "CR/ForceBalance.h"
 #include "proto.h"
 #include "cmsis_os2.h"
 
@@ -30,7 +29,8 @@ extern osMessageQueueId_t SensorDataQueueHandle;
 static uint16_t _payload_status(uint8_t *p,
                                 GlobalMotor motor[MOTOR_NUM],
                                 GlobalSensor sensor[SENSOR_NUM],
-                                const ContinuumRobot *cr, uint8_t state)
+                                const ContinuumRobot *cr,
+                                uint8_t state)
 {
     uint16_t i = 0;
 
@@ -66,51 +66,6 @@ static uint16_t _payload_status(uint8_t *p,
     return i;   /* = 85 */
 }
 
-/** 张力感知数据段: 50 字节 */
-static uint16_t _payload_percept(uint8_t *p, const PerceptState *s)
-{
-    uint16_t i = 0;
-
-    p[i++] = s->contact.detected ? 1u : 0u;
-    p[i++] = s->contact.seg;
-
-    int16_t v;
-    v = (int16_t)(s->contact.s_norm * 10000.0f);
-    p[i++] = (uint8_t)(((uint16_t)v >> 8) & 0xFF); p[i++] = (uint8_t)(v & 0xFF);
-    v = (int16_t)(s->disturbance * 10000.0f);
-    p[i++] = (uint8_t)(((uint16_t)v >> 8) & 0xFF); p[i++] = (uint8_t)(v & 0xFF);
-    v = (int16_t)(s->contact.F_seg[0] * 10000.0f);
-    p[i++] = (uint8_t)(((uint16_t)v >> 8) & 0xFF); p[i++] = (uint8_t)(v & 0xFF);
-    v = (int16_t)(s->contact.F_seg[1] * 10000.0f);
-    p[i++] = (uint8_t)(((uint16_t)v >> 8) & 0xFF); p[i++] = (uint8_t)(v & 0xFF);
-    v = (int16_t)(s->contact.F_mag * 100.0f);
-    p[i++] = (uint8_t)(((uint16_t)v >> 8) & 0xFF); p[i++] = (uint8_t)(v & 0xFF);
-
-    for (int k = 0; k < SDM_WIRES; k++) p[i++] = (uint8_t)s->health[k];
-
-    for (int k = 0; k < SDM_WIRES; k++) {          /* share_err ×10000 */
-        v = (int16_t)(s->share_err[k] * 10000.0f);
-        p[i++] = (uint8_t)(((uint16_t)v >> 8) & 0xFF); p[i++] = (uint8_t)(v & 0xFF);
-    }
-    for (int k = 0; k < SDM_WIRES; k++) {          /* force ×100 (N) */
-        v = (int16_t)(s->force[k] * 100.0f);
-        p[i++] = (uint8_t)(((uint16_t)v >> 8) & 0xFF); p[i++] = (uint8_t)(v & 0xFF);
-    }
-
-    const float *g = force_balance_gains();        /* 通道平衡系数 ×100 */
-    for (int k = 0; k < SDM_WIRES; k++) {
-        int gv = (int)(g[k] * 100.0f + 0.5f);
-        if (gv < 0) gv = 0;
-        if (gv > 255) gv = 255;
-        p[i++] = (uint8_t)gv;
-    }
-
-    p[i++] = force_balance_status();               /* 0未运行 1进行中 2成功 3失败 */
-    p[i++] = force_balance_error();                /* 0~7 */
-
-    return i;   /* = 50 */
-}
-
 /** 标定事件数据段: 3 字节 */
 static uint16_t _payload_calib_event(uint8_t *p, uint8_t stage, uint8_t err, uint8_t mask)
 {
@@ -124,6 +79,10 @@ static uint16_t _payload_calib_event(uint8_t *p, uint8_t stage, uint8_t err, uin
 
 /**
  * @brief 打包系统状态帧 (自动按当前协议版本选帧头)
+ *
+ * 数据段 73 字节 (仅电机 + 传感器 + CR 部分状态), 总帧长 78 字节。
+ *
+ * @note 2026-10-15: 张力感知数据段已全部去除。
  */
 uint16_t cmd_packer_pack_status_frame(uint8_t* frame, GlobalMotor motor[MOTOR_NUM],
                                       GlobalSensor sensor[SENSOR_NUM],
@@ -132,16 +91,6 @@ uint16_t cmd_packer_pack_status_frame(uint8_t* frame, GlobalMotor motor[MOTOR_NU
     uint8_t pl[96];
     const uint16_t n = _payload_status(pl, motor, sensor, cr, state);
     return proto_pack_uplink(frame, PROTO_DEV_DRIVE, PROTO_F_DRIVE_STATUS, pl, n);
-}
-
-/**
- * @brief 打包六路张力感知帧 (总长 54 字节, 数据段 50)
- */
-uint16_t cmd_packer_pack_percept_frame(uint8_t* frame, const PerceptState* p)
-{
-    uint8_t pl[56];
-    const uint16_t n = _payload_percept(pl, p);
-    return proto_pack_uplink(frame, PROTO_DEV_TENSION, PROTO_F_TENSION_PERCEPT, pl, n);
 }
 
 /**

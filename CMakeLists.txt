@@ -100,3 +100,38 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
     # Add user defined libraries
 )
+
+# ---------------------------------------------------------------------------
+# 烧录 / 调试（OpenOCD）
+#   cmake --build build/Debug --target flash
+#   换探针: cmake --preset Debug -DOPENOCD_INTERFACE=cmsis-dap.cfg
+# ---------------------------------------------------------------------------
+find_program(OPENOCD_EXE NAMES openocd
+        HINTS "$ENV{USERPROFILE}/xpack-openocd-0.12.0-6/bin")
+
+set(OPENOCD_INTERFACE "stlink.cfg"   CACHE STRING "OpenOCD interface 配置")
+set(OPENOCD_TARGET    "stm32h7x.cfg" CACHE STRING "OpenOCD target 配置")
+
+if(OPENOCD_EXE)
+    # program 只传文件名 + WORKING_DIRECTORY：源码路径含空格，绝对路径会被 make/ninja 拆参
+    add_custom_target(flash
+            COMMAND "${OPENOCD_EXE}"
+                    -f "interface/${OPENOCD_INTERFACE}"
+                    -f "target/${OPENOCD_TARGET}"
+                    -c "program $<TARGET_FILE_NAME:${CMAKE_PROJECT_NAME}> verify reset exit"
+            DEPENDS ${CMAKE_PROJECT_NAME}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            USES_TERMINAL
+            COMMENT ">>> OpenOCD flashing ${CMAKE_PROJECT_NAME}.elf")
+
+    add_custom_target(ocd_reset
+            COMMAND "${OPENOCD_EXE}"
+                    -f "interface/${OPENOCD_INTERFACE}"
+                    -f "target/${OPENOCD_TARGET}"
+                    -c "init; reset run; exit"
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            USES_TERMINAL
+            COMMENT ">>> OpenOCD reset & run")
+else()
+    message(WARNING "openocd not found: flash / ocd_reset targets unavailable")
+endif()

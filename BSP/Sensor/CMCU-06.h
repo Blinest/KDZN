@@ -40,7 +40,7 @@ void CMCU_06_single_read(uint8_t addr);
 
 /**
  * @brief 逐字节解析CMCU-06 Modbus-RTU响应
- * @param byte USART1接收到的字节
+ * @param byte USART2接收到的字节
  */
 void CMCU_06_Parse_Byte(uint8_t byte);
 
@@ -52,7 +52,7 @@ void CMCU_06_Parse_Reset(void);
 /**
  * @brief 获取最近一次「成功解析(CRC通过)」的传感器地址
  *
- * 6 个 CMCU-06 共用 USART1 总线，必须"发一条请求 -> 等响应/超时 -> 再发下一条"，
+ * 6 个 CMCU-06 共用 USART2 总线，必须"发一条请求 -> 等响应/超时 -> 再发下一条"，
  * 否则多机同时响应会在总线上碰撞。本函数用于轮询握手。
  *
  * @return 1-6: 对应地址的响应已到达; 0: 尚无响应

@@ -5,7 +5,7 @@
  * 职责：
  *   1. 周期性采集外设状态：电机位置/速度、6 路压力传感器数据
  *   2. 周期性把系统状态打包成帧
- *   3. 通过 USART2 TX 上报给上位机
+ *   3. 通过 USART1 TX 上报给上位机
  *
  * 说明：
  *   外设反馈字节的「指令解析」已拆分至 DataParserTask.c，
@@ -54,14 +54,14 @@ void StartSensorDataTask(void *argument)
         /* 每 200ms 读取一次电机状态（位置、速度） */
         if ((current_time - last_motor_check_time) >= MOTOR_CHECK_PERIOD_MS)
         {
-            //motor_status_check();
+            motor_status_check();
             last_motor_check_time = current_time;
         }
 
-        /* 压力传感器轮询: 6 路共用 USART1 总线, 串行推进(每步至多发一条请求) */
+        /* 压力传感器轮询: 6 路共用 USART2 总线, 串行推进(每步至多发一条请求) */
         if ((current_time - last_sensor_read_time) >= SENSOR_POLL_PERIOD_MS)
         {
-            //sensor_poll_step(SENSOR_RESP_TIMEOUT_MS);
+            sensor_poll_step(SENSOR_RESP_TIMEOUT_MS);
             last_sensor_read_time = current_time;
         }
 

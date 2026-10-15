@@ -44,7 +44,7 @@ void CMCU_06_Write_Protect(uint8_t addr, bool enable_protect)
 	cmd[6] = crc & 0xFF;        // CRC 低字节
 	cmd[7] = (crc >> 8) & 0xFF; // CRC 高字节
 
-	Usart_SendString(&huart1, cmd, 8);
+	Usart_SendString(&huart2, cmd, 8);
 }
 
 /**
@@ -73,7 +73,7 @@ void CMCU_06_Reset(uint8_t addr)
 	cmd[6] = crc & 0xFF;
 	cmd[7] = (crc >> 8) & 0xFF;
 
-	Usart_SendString(&huart1, cmd, 8);
+	Usart_SendString(&huart2, cmd, 8);
 }
 
 /**
@@ -94,7 +94,7 @@ void CMCU_06_ResetPins(uint8_t addr)
 	cmd[6] = crc & 0xFF;
 	cmd[7] = (crc >> 8) & 0xFF;
 
-	Usart_SendString(&huart1, cmd, 8);
+	Usart_SendString(&huart2, cmd, 8);
 }
 
 
@@ -119,7 +119,7 @@ void CMCU_06_WriteCalWeight(uint8_t addr, uint16_t weight_10x)
     cmd[6] = crc & 0xFF;
     cmd[7] = (crc >> 8) & 0xFF;
 
-    Usart_SendString(&huart1, cmd, 8);
+    Usart_SendString(&huart2, cmd, 8);
 }
 
 /**
@@ -166,7 +166,7 @@ void CMCU_06_single_read(uint8_t addr)
 	cmd[6] = crc & 0xFF;
 	cmd[7] = (crc >> 8) & 0xFF;
 
-	Usart_SendString(&huart1, cmd, 8);
+	Usart_SendString(&huart2, cmd, 8);
 }
 
 /* ==================== Modbus-RTU 响应解析 ==================== */
@@ -225,7 +225,7 @@ void CMCU_06_Parse_Reset(void)
  *   [Addr][0x03][ByteCnt][DataH][DataL][DataH][DataL][CRCL][CRCH] = 9字节
  * 4字节原始数据对应2个寄存器，第1个寄存器为力值数据
  *
- * @param byte 从USART1接收到的字节
+ * @param byte 从USART2接收到的字节
  */
 void CMCU_06_Parse_Byte(uint8_t byte)
 {

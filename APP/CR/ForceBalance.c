@@ -74,7 +74,7 @@ static void _notify_timeout(uint8_t stage, uint8_t err, uint8_t mask)
     uint8_t f[8];
     const uint16_t n = cmd_packer_pack_fb_timeout_frame(f, stage, err, mask);
     if (n > 0 && n <= (uint16_t)sizeof(f)) {
-        Usart_SendString(&huart2, f, n);
+        Usart_SendString(&huart1, f, n);        /* 上位机链路 = USART1 */
     }
 }
 

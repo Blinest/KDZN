@@ -68,39 +68,15 @@ extern "C" {
 	 *   [70-71] armbend int16 ×100
 	 *   [72]    state   uint8
 	 *
+	 * @note 2026-10-15: 张力感知数据段已全部去除, 状态帧只含
+	 *       6 路电机 + 6 路传感器 + CR 的 scale/armbend/state。
+	 *
 	 * @param frame 输出缓冲区 (≥78 字节)
 	 * @return 打包后的总长度
 	 */
 	uint16_t cmd_packer_pack_status_frame(uint8_t* frame, GlobalMotor motor_pos[MOTOR_NUM], GlobalSensor sensor_angle[SENSOR_NUM], const ContinuumRobot *lqts, uint8_t state);
 
-	/**
-	 * @brief 打包六路张力感知帧
-	 *
-	 * 数据段 50 字节, 总帧长 54 字节 (含帧头/功能码/长度/校验)。
-	 * 帧头由当前协议版本决定:
-	 *   V2: [0x55][DEV_TENSION=0x02][FUNC=0x00][LEN=50][DATA...][SUM]
-	 *   V1: [0xBB][0x03][LEN=50][DATA...][SUM]
-	 *
-	 * 数据段布局 (大端):
-	 *   [0]      contact.detected (0/1)
-	 *   [1]      contact.seg (0/1)
-	 *   [2-3]    s_norm        ×10000  int16
-	 *   [4-5]    disturbance   ×10000  int16 (无量纲份额不平衡)
-	 *   [6-7]    F_seg[0]      ×10000  int16 (无量纲)
-	 *   [8-9]    F_seg[1]      ×10000  int16
-	 *   [10-11]  F_mag         ×100    int16 (N, 粗略)
-	 *   [12-17]  health[0..5]          uint8 (0=OK 1=松弛 2=断丝 3=过张 4=过载)
-	 *   [18-29]  share_err[0..5] ×10000 int16 ×6 = 12B
-	 *   [30-41]  force[0..5]     ×100   int16 ×6 = 12B (N, 滤波+平衡后)
-	 *   [42-47]  balance_gain[0..5]     uint8 ×6 (×100, 100=1.00)
-	 *   [48]     calib_status (0=未运行 1=进行中 2=成功 3=失败)
-	 *   [49]     calib_error  (0~7)
-	 *
-	 * @param frame 输出缓冲区 (≥54 字节)
-	 * @param p     感知结果
-	 * @return 打包后的总长度
-	 */
-	uint16_t cmd_packer_pack_percept_frame(uint8_t* frame, const PerceptState* p);
+	/* 2026-10-15: cmd_packer_pack_percept_frame() 已移除, 张力感知数据不再上报 */
 
 	/**
 	 * @brief 打包握手应答帧 —— 恒定使用 V2 帧头

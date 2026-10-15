@@ -30,11 +30,16 @@ void StartCmdCtrlTask(void *argument)
 		CAN_BusOff_Recovery();
 
 		// 从队列接收上位机指令，逐字节送入解析状态机
-		if (osMessageQueueGet(CmdQueueHandle, &receive, NULL, 0) == osOK)
+		/* 先阻塞等 10ms 拿第一个字节，再一次性排空队列：
+		   1 字节/10ms 的处理速度会让长帧在 16 字节队列里溢出丢字节 */
+		if (osMessageQueueGet(CmdQueueHandle, &receive, NULL, 10) == osOK)
 		{
 			pc_cmd_parser_feed_byte(receive);
-		}
 
-		osDelay(10); // 降低 CPU 占用
+			while (osMessageQueueGet(CmdQueueHandle, &receive, NULL, 0) == osOK)
+			{
+				pc_cmd_parser_feed_byte(receive);
+			}
+		}
 	}
 }

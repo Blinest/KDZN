@@ -26,6 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "usart.h"
+#include "Communicate/can_driver.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -122,10 +123,12 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the queue(s) */
   /* creation of CmdQueue */
-  CmdQueueHandle = osMessageQueueNew (16, sizeof(uint8_t), &CmdQueue_attributes);
+  /* 队列深度 256: 上位机一帧最长 (0x12 自定义 6 电机) = 30 B, 且 ISR 逐字节入队,
+     16 字节深会让长帧尾部字节被静默丢弃(实测 0x11 的 18 字节帧丢最后 2 字节) */
+  CmdQueueHandle = osMessageQueueNew (256, sizeof(uint8_t), &CmdQueue_attributes);
 
   /* creation of SensorDataQueue */
-  SensorDataQueueHandle = osMessageQueueNew (16, sizeof(uint8_t), &SensorDataQueue_attributes);
+  SensorDataQueueHandle = osMessageQueueNew (256, sizeof(uint8_t), &SensorDataQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -164,6 +167,12 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
+  /* CAN 驱动初始化: 创建接收队列 + 过滤器 + HAL_FDCAN_Start + 中断通知。
+   * 放在调度器启动之后、本任务优先级(Normal)高于其它任务(Low)，
+   * 保证 CmdCtrlTask / SensorDataTask 首次用 CAN 之前已就绪；
+   * 同时避开"调度器启动前调用 osMessageQueueNew 导致 BASEPRI 被永久抬高"的坑。 */
+  CAN_Driver_Init();
+
   /* 启动 USART1/USART2 单字节中断接收 */
   UART_Receive_Init();   
 

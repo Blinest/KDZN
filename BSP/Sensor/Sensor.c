@@ -3,7 +3,7 @@
  * @brief 传感器驱动函数实现
  *
  * 实现传感器初始化、数据读取、自检等功能
- * 使用 CMCU-06 压力传感器（USART1，Modbus-RTU协议）
+ * 使用 CMCU-06 压力传感器（USART2，Modbus-RTU协议）
  *
  * @date 2026-04-02
  * @author blin
@@ -63,7 +63,7 @@ void sensor_single_read(uint8_t sensor_id)
 /**
  * @brief 多传感器数据读取函数
  *
- * 6 个 CMCU-06 共用 USART1(Modbus-RTU) 总线, 串行轮询:
+ * 6 个 CMCU-06 共用 USART2(Modbus-RTU) 总线, 串行轮询:
  *   发一条请求 -> 等本地址响应(或超时) -> 再发下一条, 避免多机响应碰撞。
  */
 void sensor_multi_read(void)
