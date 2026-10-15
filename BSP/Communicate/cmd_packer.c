@@ -49,7 +49,7 @@ static uint16_t _payload_status(uint8_t *p,
     }
 
     /* 传感器数据: x/y 各 int16 (×0.01 N) → 每路 4 字节
-     * x = 滤波+通道平衡后张力; y = 原始值 (z 已取消) */
+     * x = 原始值; y = 滤波值  */
     for (int k = 0; k < SENSOR_NUM; k++) {
         int16_t x = (int16_t)(sensor[k].x * 100);
         int16_t y = (int16_t)(sensor[k].y * 100);

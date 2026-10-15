@@ -311,14 +311,14 @@ void CMCU_06_Parse_Byte(uint8_t byte)
 
                 /* 转换为牛顿（传感器原始单位为g，raw/100 = N）
                  * 具体转换系数根据实际传感器标定调整 */
-                float force = (float)raw / 100.0f;
+                float force = (float)raw;
 
                 uint8_t sensor_idx = s_cmcu_parse.slave_addr - 1;
                 if (sensor_idx < SENSOR_NUM)
                 {
-                    /* .y 保留原始值(诊断对比), .x 为调理后值(供控制/感知使用) */
-                    global_sensor[sensor_idx].y = force;
-                    global_sensor[sensor_idx].x = force_filter_update(sensor_idx, force);
+                    /* .x 保留原始值(诊断对比), .y 为调理后值(供控制/感知使用) */
+                    global_sensor[sensor_idx].x = force;
+                    global_sensor[sensor_idx].y = force_filter_update(sensor_idx, force);
                 }
             }
         }

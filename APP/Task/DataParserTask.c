@@ -48,7 +48,7 @@ void StartDataParserTask(void *argument)
         {
             uint32_t drain_cnt = 0;
             do {
-                //CMCU_06_Parse_Byte(rx_byte);
+                CMCU_06_Parse_Byte(rx_byte);
                 if (++drain_cnt >= 64) { taskYIELD(); drain_cnt = 0; }
             } while (osMessageQueueGet(SensorDataQueueHandle, &rx_byte, NULL, 0) == osOK);
         }
