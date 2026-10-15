@@ -28,10 +28,11 @@
 #include "CR/ForceBalance.h"
 #include "Communicate/cmd_packer.h"
 
-/* ==================== 周期配置 (ms) ==================== */
+/* ==================== 周期配置 (ms) ====================
+ * 串口统一 115200: USART1 = 上位机链路, USART2 = CMCU-06 传感器总线 */
 #define MOTOR_CHECK_PERIOD_MS   200   /* 电机状态采集周期 */
-#define SENSOR_POLL_PERIOD_MS    15   /* 压力传感器轮询步进周期(6路轮一遍≈100~200ms) */
-#define PERCEPT_PERIOD_MS        20   /* 六路张力感知更新周期 */
+#define SENSOR_POLL_PERIOD_MS    15   /* 压力传感器轮询步进(6 路串行, 全部应答时 ≈90ms/轮 → 每路 ≈11Hz) */
+#define PERCEPT_PERIOD_MS        20   /* 六路张力感知更新周期 (50Hz, 目前未启用) */
 
 void StartSensorDataTask(void *argument)
 {
