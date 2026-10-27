@@ -63,6 +63,7 @@ static void _h_motor_disable(void)
 {
     for (int i = 0; i < MOTOR_NUM; i++) {
         motor_enable(global_motor[i].id, false);
+        global_motor[i].state = false;   /* 悲观置位: 等 0x3A 轮询确认再变化 */
         osDelay(1);
     }
     CR.state = 0;
@@ -74,7 +75,13 @@ static void _h_motor_enable(void)
         motor_enable(global_motor[i].id, true);
         osDelay(1);
     }
-    CR.state = 1;
+    /* 注意: 这里**不再**无条件 CR.state = 1。
+     * 置 1 的条件是「6 路电机都回复了已使能」——由 CAN 回调解入
+     * global_motor[].state (0xF3 回复 status==0x02 或 0x3A 状态标志位 bit0),
+     * 再由 motor_update_enable_state() 汇总:
+     *   全部使能 → CR.state = 1; 有任何一路未使能 → CR.state = 0。
+     * 该判定同时挂在 200ms 周期的 motor_status_check() 之后持续刷新。 */
+    motor_update_enable_state();
 }
 
 /**

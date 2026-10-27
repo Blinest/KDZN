@@ -52,10 +52,12 @@ void StartSensorDataTask(void *argument)
         /* 标定状态机: 6 路同向等量 → 采样 → 生成通道平衡系数 */
         //force_balance_tick(current_time);
 
-        /* 每 200ms 读取一次电机状态（位置、速度） */
+        /* 每 200ms 读取一次电机状态（位置、速度、使能标志） */
         if ((current_time - last_motor_check_time) >= MOTOR_CHECK_PERIOD_MS)
         {
             motor_status_check();
+            /* 汇总 6 路实际使能状态 → CR.state (全部使能=1, 有任一路未使能=0) */
+            motor_update_enable_state();
             last_motor_check_time = current_time;
         }
 

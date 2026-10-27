@@ -132,6 +132,15 @@ void motor_kinematic_control(Kinematic kinematic, float R[], float theta[], floa
 void motor_status_check(void);
 
 /**
+ * @brief 依据 6 路电机的实际使能状态刷新 CR.state
+ *
+ * 全部电机 state==true → CR.state = 1; 有任何一路未使能 → CR.state = 0。
+ * state 来自电机真实回复(0xF3 回复 status==0x02 / 0x3A 状态标志位 bit0),
+ * 所以 CR.state 只会在「电机真的使能」之后才置 1。
+ */
+void motor_update_enable_state(void);
+
+/**
  * @brief 读取 6 路电机实时位置 (仅位置, 比 motor_status_check 轻)
  * @note  阻塞 ~6ms (每路 osDelay(1) 等响应); 响应由 CAN 回调解入
  *        global_motor[].stepper_motor.current_pos (mm)

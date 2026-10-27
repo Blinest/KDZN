@@ -21,6 +21,7 @@
 #include "fdcan.h"
 #include "X_V2.h"
 #include "CR/SDM.h"
+#include "CR/CR.h"
 
 // 创建电机与电机反馈数据结构体
 MotorFeedback motor_feedback[MOTOR_NUM];
@@ -359,7 +360,33 @@ void motor_status_check(void)
     	osDelay(1); // 延时等待响应
     	X_V2_Read_Sys_Params(global_motor[i].id, S_VEL);
     	osDelay(1); // 延时等待响应
+    	/* 0x3A 状态标志位 (bit0 = 使能状态) → 回调解入 global_motor[].state,
+    	 * 供 motor_update_enable_state() 判断 CR.state */
+    	X_V2_Read_Sys_Params(global_motor[i].id, S_FLAG);
+    	osDelay(1); // 延时等待响应
     }
+}
+
+/**
+ * @brief 依据 6 路电机的「实际使能状态」刷新 CR.state
+ *
+ * 判据: global_motor[0..5].state 全部为 true → CR.state = 1;
+ *       只要有任何一路未使能 → CR.state = 0。
+ *
+ * state 的来源是电机的真实回复:
+ *   - 0xF3 使能命令的回复 [F3][status][6B], status==0x02 视为使能成功;
+ *   - 0x3A 状态标志位回复 (bit0 = 使能状态), 由 motor_status_check() 每 200ms 轮询刷新。
+ *
+ * 因此 CR.state 只会在"电机真的使能"之后才置 1, 掉线/失能会立刻回到 0。
+ */
+void motor_update_enable_state(void)
+{
+	bool all_enabled = true;
+
+	for (int i = 0; i < MOTOR_NUM; i++) {
+		if (!global_motor[i].state) { all_enabled = false; break; }
+	}
+	CR.state = all_enabled;
 }
 
 void motor_read_positions(void)

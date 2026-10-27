@@ -123,12 +123,10 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the queue(s) */
   /* creation of CmdQueue */
-  /* 队列深度 256: 上位机一帧最长 (0x12 自定义 6 电机) = 30 B, 且 ISR 逐字节入队,
-     16 字节深会让长帧尾部字节被静默丢弃(实测 0x11 的 18 字节帧丢最后 2 字节) */
-  CmdQueueHandle = osMessageQueueNew (256, sizeof(uint8_t), &CmdQueue_attributes);
+  CmdQueueHandle = osMessageQueueNew (16, sizeof(uint8_t), &CmdQueue_attributes);
 
   /* creation of SensorDataQueue */
-  SensorDataQueueHandle = osMessageQueueNew (256, sizeof(uint8_t), &SensorDataQueue_attributes);
+  SensorDataQueueHandle = osMessageQueueNew (16, sizeof(uint8_t), &SensorDataQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */

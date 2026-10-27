@@ -43,11 +43,6 @@ void MX_FDCAN1_Init(void)
   hfdcan1.Init.AutoRetransmission = DISABLE;
   hfdcan1.Init.TransmitPause = DISABLE;
   hfdcan1.Init.ProtocolException = DISABLE;
-  /* [修正 2026-10-15] 原为 presc=20/TSEG1=31/TSEG2=8/SJW=4
-   *   → 80MHz/(20) 之后 40 tq/位 = 10us/位 = 100 kbps,
-   *     与电机/上位机工具(500 kbps)不一致: 表现为 REC 涨到 127(Form Error)、
-   *     TEC 涨到 128(无人 ACK)、一帧都收不到。
-   *   现改为 500 kbps: 80MHz/10 = 8MHz tq(125ns), 1+13+2 = 16 tq = 2us。 */
   hfdcan1.Init.NominalPrescaler = 10;
   hfdcan1.Init.NominalSyncJumpWidth = 1;
   hfdcan1.Init.NominalTimeSeg1 = 13;
@@ -107,12 +102,7 @@ void HAL_FDCAN_MspInit(FDCAN_HandleTypeDef* fdcanHandle)
     __HAL_RCC_GPIOD_CLK_ENABLE();
     /**FDCAN1 GPIO Configuration
     PA11     ------> FDCAN1_RX
-    PD1      ------> FDCAN1_TX
-
-    注意(2026-10-15 实测): 本板 CAN 收发器 TXD 接 PD1、RXD 接 PA11,
-    与下面的配置一致。FDCAN1_RX 可选引脚只有 PA11/PB8/PD0/PH14/PI9,
-    FDCAN1_TX 可选 PA12/PB9/PB13/PD1/PH13 等 —— 引脚接错会表现为
-    收不到任何帧, 且 ACK 位采不到导致错误被动(TEC 涨到 128)。
+    PD1     ------> FDCAN1_TX
     */
     GPIO_InitStruct.Pin = GPIO_PIN_11;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;

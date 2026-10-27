@@ -100,7 +100,6 @@ int main(void)
   MX_FDCAN1_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
-
   /* USER CODE BEGIN 2 */
   /* ---- 应用层模块初始化（外设已就绪，不依赖 RTOS 对象）---- */
   CR_init();   /* 电机参数 / SDM / CMCU-06 压力传感器 (USART2, 115200bps) */
