@@ -37,9 +37,11 @@ void motor_init()
 		global_motor[i].stepper_motor.daocheng = 1; // 根据丝杠导程设置，1mm
 		global_motor[i].stepper_motor.xifen = 256; // 平滑控制
 		global_motor[i].stepper_motor.step_angle = 1.8; // 步距角
-		global_motor[i].stepper_motor.target_vel = 3; // 5mm/s 
+		global_motor[i].stepper_motor.target_vel = 3; // 默认线速度 mm/s
 		global_motor[i].stepper_motor.current_vel = 10;
-		global_motor[i].vel_max = 120; // 满足指标要求
+		/* 最大线速度 (mm/s) = 5.0, 按导程 1mm 折算最大转速 = 5*60/1 = 300 rpm。
+		 * 最大转速不单独配置, 由 motor_run() 按 rpm = mm_per_s * 60 / 导程 推导。 */
+		global_motor[i].vel_max = 5;
 		global_motor[i].current_acc = 0; // 由于位移量较小，为提高响应速度，直接启动，不做加减速处理 (0-255)
 	}
 }
@@ -72,7 +74,7 @@ void motor_run(int idx, float vel, float target, uint8_t snf) {
 	// 方向确定
 	const int dir = target > 0 ? 0 : 1;
 
-	// 速度计算
+	// 速度计算: 入参 vel 是线速度 mm/s; 最大转速 rpm 由本式推导 (导程是唯一换算依据)
 	const float vel_rpm = vel * 60.0f / daocheng ;
 	const uint16_t vel_rpm_abs = (uint16_t)(fabsf(vel_rpm) + 0.5f);
 
@@ -214,7 +216,11 @@ void motor_sync_control(uint8_t count, uint8_t start_idx, float distance[])
 		float ratio = (max_distance > 0) ? (abs_distance / max_distance) : 0;
 
 		// 步进电机速度分配计算
-		float vel_max = global_motor[i].vel_max / 60.0f * global_motor[i].stepper_motor.daocheng;
+		/* vel_max 语义统一为「线速度 mm/s」; 最大转速 rpm 由 motor_run()
+		 * 用 rpm = mm_per_s * 60 / 导程 推导 (导程变化时只需改导程, 不必再折算上限)。
+		 * [2026-10-27] 原写法 vel_max/60*daocheng 把 vel_max 当成 rpm 用,
+		 * 导程改成 1mm 后把上限压到 120/60*1 = 2 mm/s。 */
+		float vel_max = (float)global_motor[i].vel_max;
 
 		// 计算当前步进电机速度
 		float calculated_speed = ratio * vel_max;
