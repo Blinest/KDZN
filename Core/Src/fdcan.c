@@ -43,10 +43,13 @@ void MX_FDCAN1_Init(void)
   hfdcan1.Init.AutoRetransmission = DISABLE;
   hfdcan1.Init.TransmitPause = DISABLE;
   hfdcan1.Init.ProtocolException = DISABLE;
-  hfdcan1.Init.NominalPrescaler = 10;
-  hfdcan1.Init.NominalSyncJumpWidth = 1;
-  hfdcan1.Init.NominalTimeSeg1 = 13;
-  hfdcan1.Init.NominalTimeSeg2 = 2;
+  /* [2026-10-27] CAN 波特率改回 100 kbps (原配置值; 上位机工具与电机侧需同为 100 k):
+   *   80MHz / 20 = 4MHz tq(250ns), 1+31+8 = 40 tq = 10us/位 → 100 kbps
+   * 若以后要 500 kbps: presc=10 / ts1=13 / ts2=2 / sjw=1 (16 tq × 125ns = 2us) */
+  hfdcan1.Init.NominalPrescaler = 20;
+  hfdcan1.Init.NominalSyncJumpWidth = 4;
+  hfdcan1.Init.NominalTimeSeg1 = 31;
+  hfdcan1.Init.NominalTimeSeg2 = 8;
   hfdcan1.Init.DataPrescaler = 1;
   hfdcan1.Init.DataSyncJumpWidth = 1;
   hfdcan1.Init.DataTimeSeg1 = 1;
