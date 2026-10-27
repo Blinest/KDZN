@@ -33,10 +33,10 @@ void motor_init()
 	for (int i = 0; i < MOTOR_NUM; i++)
 	{
 		global_motor[i].id = MOTOR_ID + i;
-		global_motor[i].stepper_motor.daocheng = 12; // 根据丝杠导程设置，9mm
+		global_motor[i].stepper_motor.daocheng = 1; // 根据丝杠导程设置，1mm
 		global_motor[i].stepper_motor.xifen = 256; // 平滑控制
 		global_motor[i].stepper_motor.step_angle = 1.8; // 步距角
-		global_motor[i].stepper_motor.target_vel = 10; // 如果要完成指标，至少是 10mm/s
+		global_motor[i].stepper_motor.target_vel = 3; // 5mm/s 
 		global_motor[i].stepper_motor.current_vel = 10;
 		global_motor[i].vel_max = 120; // 满足指标要求
 		global_motor[i].current_acc = 0; // 由于位移量较小，为提高响应速度，直接启动，不做加减速处理 (0-255)
